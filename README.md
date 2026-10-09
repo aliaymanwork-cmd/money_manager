@@ -23,3 +23,5 @@
 - Open your Vercel link > browser menu > "Add to Home screen". It opens like an app, full screen.
 
 Notes: your data is private to your login (row-level security). The exchange rate is editable on the Overview page.
+
+\n## Redesign notes\n\nThis version includes a cleaner responsive interface, improved navigation, more consistent cards and forms, focus states, and clearer validation for transaction, budget, account, task, and loan inputs. It also displays a helpful retry panel when database reads fail. Your existing Supabase tables and deployment flow are retained.\n

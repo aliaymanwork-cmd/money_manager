@@ -1,25 +1,39 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Money Planner</title>
-<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#0e7c7b"><link rel="apple-touch-icon" href="/icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><script src="/config.js"></script>
+<title>Money Planner — Personal Finance</title>
+<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#087f8c"><link rel="apple-touch-icon" href="/icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><script src="/config.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-:root{--bg:#eef1f6;--card:#fff;--ink:#1b2433;--mute:#667085;--ok:#0e7c7b;--bad:#d1495b;--line:#dde3ec}
-@media(prefers-color-scheme:dark){:root{--bg:#10151f;--card:#18202d;--ink:#e8edf5;--mute:#93a0b4;--line:#263145}}
-*{box-sizing:border-box}body{margin:0;font:15px/1.5 Manrope,system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:env(safe-area-inset-top) 0 calc(70px + env(safe-area-inset-bottom))}
-main{max-width:640px;margin:auto;padding:14px}h1{font-size:20px;margin:6px 0}h2{font-size:16px;margin:18px 0 8px}
-.hero{background:linear-gradient(135deg,#0e7c7b,#1b4d8f);color:#fff;border:0}.hero .mute{color:#d6e6f2}.hero .row{border-color:rgba(255,255,255,.2)}
-.card{background:var(--card);border-radius:14px;padding:14px;margin:10px 0;border:1px solid var(--line)}
-.big{font-size:30px;font-weight:800}.ok{color:var(--ok)}.bad{color:var(--bad)}.mute{color:var(--mute);font-size:13px}
-.row{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);align-items:center}.row:last-child{border:0}
-input,select,textarea{width:100%;padding:11px;margin:4px 0;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
-button{padding:11px 16px;border:0;border-radius:10px;background:var(--ok);color:#fff;font:600 15px Manrope;cursor:pointer}
-button.ghost{background:none;color:var(--bad);padding:4px 8px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
-nav button{flex:1;background:none;color:var(--mute);border-radius:0;padding:14px 2px;font-size:12px}nav button.on{color:var(--ok);box-shadow:inset 0 2px var(--ok)}
-.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin:4px 0}.bar i{display:block;height:100%;background:var(--ok)}.bar i.over{background:var(--bad)}.pill{display:inline-flex;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}.pill button{border-radius:0;background:none;color:var(--mute)}.pill button.on{background:var(--ok);color:#fff}
-pre{white-space:pre-wrap;font:inherit}
+:root{color-scheme:light;--bg:#f5f7fb;--card:#fff;--ink:#182230;--mute:#697586;--ok:#087f8c;--ok-dark:#066875;--bad:#d9485f;--line:#e6eaf0;--soft:#eaf7f8;--shadow:0 8px 28px rgba(18,32,54,.055)}
+@media(prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#0b1220;--card:#121c2c;--ink:#edf2f8;--mute:#a0aec0;--line:#263449;--soft:#142e39;--shadow:0 8px 28px rgba(0,0,0,.15)}}
+*{box-sizing:border-box}html{min-height:100%;background:var(--bg)}body{margin:0;font:14px/1.55 Inter,Manrope,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);padding:env(safe-area-inset-top) 0 calc(78px + env(safe-area-inset-bottom))}
+main{max-width:1180px;margin:auto;padding:28px 28px 36px}h1{font-size:clamp(22px,3vw,29px);line-height:1.2;letter-spacing:-.7px;margin:6px 0 8px;font-weight:800}h2{font-size:16px;letter-spacing:-.2px;margin:0 0 14px;font-weight:750}h3{font-size:14px;margin:0 0 8px}
+#app>h1{margin:0 0 18px}
+#app>.row:first-child{margin-bottom:18px;align-items:center}
+.hero{background:linear-gradient(120deg,#073b4c 0%,#087f8c 55%,#169ca0 100%);color:#fff;border:0;box-shadow:0 14px 32px rgba(8,127,140,.18);padding:24px}
+.hero .mute{color:#d2edf0}.hero .row{border-color:rgba(255,255,255,.16)}.hero .big{font-size:clamp(30px,4vw,40px);letter-spacing:-1.2px;margin:5px 0 12px}
+.card{background:var(--card);border-radius:18px;padding:20px;margin:14px 0;border:1px solid var(--line);box-shadow:var(--shadow);min-width:0}
+.big{font-size:30px;font-weight:800;letter-spacing:-.8px}.ok{color:var(--ok)}.bad{color:var(--bad)}.mute{color:var(--mute);font-size:12px}
+.row{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);align-items:center;min-width:0}.row:last-child{border-bottom:0}.row>div{min-width:0}.row>div:first-child{overflow-wrap:anywhere}
+input,select,textarea{width:100%;min-width:0;padding:12px 13px;margin:5px 0 8px;border-radius:11px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--ok);box-shadow:0 0 0 3px rgba(8,127,140,.12)}
+input::placeholder,textarea::placeholder{color:var(--mute);opacity:.8}
+button{padding:11px 16px;border:0;border-radius:11px;background:var(--ok);color:#fff;font:650 13px Inter,Manrope,system-ui,sans-serif;cursor:pointer;transition:transform .15s,background .15s;white-space:nowrap}
+button:hover{background:var(--ok-dark)}button:active{transform:scale(.98)}button:focus-visible{outline:3px solid rgba(8,127,140,.28);outline-offset:2px}
+button.ghost{background:transparent;color:var(--bad);padding:5px 8px}button.ghost:hover{background:rgba(217,72,95,.08)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#nav{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:4px;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:10px max(20px,calc((100vw - 1124px)/2));padding-bottom:10px}
+#nav button{flex:0 0 auto;background:transparent;color:var(--mute);border-radius:10px;padding:10px 14px;font-size:12px}
+#nav button.on{color:var(--ok);background:var(--soft);box-shadow:none}
+#nav button:first-child{margin-right:auto;font-size:14px;font-weight:800;color:var(--ink)}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin:7px 0 12px}.bar i{display:block;height:100%;background:var(--ok);border-radius:99px;transition:width .3s}.bar i.over{background:var(--bad)}
+.pill{display:inline-flex;gap:2px;border:1px solid var(--line);border-radius:11px;overflow:hidden;padding:3px;background:var(--bg)}.pill button{border-radius:8px;background:none;color:var(--mute);padding:7px 12px}.pill button.on{background:var(--ok);color:#fff}
+pre{white-space:pre-wrap;font:inherit;overflow-wrap:anywhere}.card:has(>h2){padding-top:21px}
+svg{max-width:100%;height:auto}label{cursor:pointer}
+@media(min-width:900px){body{padding-bottom:24px}#app{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 18px}#app>h1,#app>.row:first-child,#app>input[type=month],#app>.hero,#app>.card:first-of-type{grid-column:1/-1}#app>.hero{margin-top:4px}#app>.card{margin:9px 0}#nav{padding-left:max(28px,calc((100vw - 1124px)/2));padding-right:max(28px,calc((100vw - 1124px)/2))}}
+@media(max-width:650px){body{padding-bottom:calc(74px + env(safe-area-inset-bottom))}main{padding:16px 14px 24px}.card{padding:16px;border-radius:15px;margin:11px 0}.hero{padding:20px}.row{gap:8px}.row>div:last-child{text-align:right}#nav{position:fixed;top:auto;bottom:0;left:0;right:0;justify-content:space-around;gap:0;padding:7px 4px calc(7px + env(safe-area-inset-bottom));border-top:1px solid var(--line);border-bottom:0;box-shadow:0 -8px 24px rgba(18,32,54,.06);overflow-x:auto}#nav button{flex:1 0 auto;padding:12px 9px;font-size:11px}#nav button:first-child{display:none}.big{font-size:27px}.grid{gap:7px}button{padding:11px 12px}}
+@media(max-width:380px){main{padding:12px 10px}.grid{grid-template-columns:1fr}.hero .big{font-size:28px}#nav button{padding:11px 7px}}
 </style></head><body><main id="app"></main><nav id="nav" hidden></nav>
 <script>
 if(!window.CONFIG||CONFIG.SUPABASE_URL.startsWith('PASTE')){document.getElementById('app').innerHTML='<div class="card"><b>Almost there</b><br>Open <code>config.js</code> and paste your Supabase URL and anon key, then redeploy.</div>';throw new Error('config missing')}
@@ -39,12 +53,14 @@ const inMonth=(k=S.month)=>S.entries.filter(x=>x.date.startsWith(k));
 async function load(){
   const q=t=>db.from(t).select('*');
   const [e,d,t,a,b,s]=await Promise.all([q('entries').order('date',{ascending:false}),q('debts').order('rate',{ascending:false}),q('todos').order('created'),q('accounts').order('name'),q('budgets').order('category'),q('settings').maybeSingle()]);
+  const failed=[e,d,t,a,b,s].find(x=>x.error);
+  if(failed){$('#app').innerHTML=`<div class="card"><h1>Couldn't load your planner</h1><p class="mute">${esc(failed.error.message||'Please check your connection and database setup.')}</p><button onclick="load()">Try again</button></div>`;return}
   S.entries=e.data||[];S.debts=d.data||[];S.todos=t.data||[];S.accounts=a.data||[];S.budgets=b.data||[];if(s.data)S.rate=+s.data.rate;render();
 }
 function totals(){const m=inMonth(),inc=sumC(m.filter(x=>x.kind=='income'),'amount'),exp=sumC(m.filter(x=>x.kind=='expense'),'amount'),emi=sumC(S.debts,'emi');return{inc,exp,emi,left:inc-exp-emi}}
 // Avalanche payoff in display currency: highest interest first, freed EMIs roll forward.
 function payoff(extra){
-  let d=S.debts.map(x=>({r:+x.rate,b:cv(x.balance,x.currency,S.cur),e:cv(x.emi,x.currency,S.cur)})).sort((a,b)=>b.r-a.r);
+  let d=S.debts.map(x=>({r:+x.rate,b:cv(x.balance,x.currency||'INR',S.cur),e:cv(x.emi,x.currency||'INR',S.cur)})).sort((a,b)=>b.r-a.r);
   const pot=d.reduce((s,x)=>s+x.e,0)+extra;let m=0,int=0;
   while(d.some(x=>x.b>0)&&m<600){m++;let rest=pot;
     d.forEach(x=>{if(x.b>0){const i=x.b*x.r/1200;int+=i;x.b+=i;const p=Math.min(x.b,x.e);x.b-=p;rest-=p}});
@@ -64,7 +80,7 @@ function budgetBars(){const sp={};inMonth().filter(x=>x.kind=='expense').forEach
 
 function render(){
   const a=$('#app'),t=totals();$('#nav').hidden=false;
-  $('#nav').innerHTML=[['home','Overview'],['money','Money'],['acc','Accounts'],['debts','Debts'],['todo','To-do'],['ai','Gemini']].map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="S.tab='${k}';render()">${l}</button>`).join('');
+  $('#nav').innerHTML=[['home','Overview'],['money','Transactions'],['acc','Accounts'],['debts','Loans'],['todo','Tasks'],['ai','AI Coach']].map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="S.tab='${k}';render()">${l}</button>`).join('');
   const mon=`<input type="month" value="${S.month}" onchange="S.month=this.value;render()">`;
   if(S.tab=='home'){const p0=payoff(0),p1=payoff(S.extra),due=dueSoon(),have=sumC(S.accounts,'balance');
     a.innerHTML=`<div class="row" style="border:0"><h1>Money Planner</h1><div class="pill">${['AED','INR'].map(c=>`<button class="${S.cur==c?'on':''}" onclick="S.cur='${c}';localStorage.cur='${c}';render()">${c}</button>`).join('')}</div></div>${mon}
@@ -99,11 +115,11 @@ function render(){
   if(S.tab=='ai'){a.innerHTML=`<h1>Gemini advisor</h1><div class="card"><textarea id="q" rows="2" placeholder="Ask anything, e.g. how should I split my money before moving to Dubai? Or leave empty for a full plan"></textarea><button onclick="ask()">Get advice</button></div><div class="card"><pre id="out">${esc(S.ai)||'Your plan will appear here.'}</pre></div>`}
 }
 async function add(t,row,opt){const{error}=opt?await db.from(t).upsert(row,opt):await db.from(t).insert(row);if(error)alert(error.message);else load()}
-const addEntry=()=>$('#ti').value&&$('#am').value&&add('entries',{kind:$('#k').value,title:$('#ti').value,amount:+$('#am').value,currency:$('#cu').value,date:$('#dt').value,category:$('#ca').value||'General'});
-const addBudget=()=>$('#bc').value&&$('#ba').value&&add('budgets',{category:$('#bc').value.trim(),amount:+$('#ba').value,currency:$('#bu').value},{onConflict:'user_id,category'});
-const addAcc=()=>$('#an').value&&add('accounts',{name:$('#an').value,kind:$('#at').value,balance:+$('#ab').value||0,currency:$('#ac').value});
-const addDebt=()=>$('#dn').value&&$('#db').value&&$('#de').value&&add('debts',{name:$('#dn').value,balance:+$('#db').value,emi:+$('#de').value,rate:+$('#dr').value||0,due_day:+$('#dd').value||1,currency:$('#dc').value});
-const addTodo=()=>$('#tt').value&&add('todos',{text:$('#tt').value});
+const addEntry=()=>{const title=$('#ti').value.trim(),amount=+$('#am').value,date=$('#dt').value;if(!title||!Number.isFinite(amount)||amount<=0||!date)return alert('Enter a description, a valid amount greater than zero, and a date.');return add('entries',{kind:$('#k').value,title,amount,currency:$('#cu').value,date,category:$('#ca').value.trim()||'General'})};
+const addBudget=()=>{const category=$('#bc').value.trim(),amount=+$('#ba').value;if(!category||!Number.isFinite(amount)||amount<=0)return alert('Enter a category and a budget greater than zero.');return add('budgets',{category,amount,currency:$('#bu').value},{onConflict:'user_id,category'})};
+const addAcc=()=>{const name=$('#an').value.trim(),balance=+$('#ab').value;if(!name||!Number.isFinite(balance)||balance<0)return alert('Enter an account name and a valid non-negative balance.');return add('accounts',{name,kind:$('#at').value,balance,currency:$('#ac').value})};
+const addDebt=()=>{const name=$('#dn').value.trim(),balance=+$('#db').value,emi=+$('#de').value,rate=+$('#dr').value||0,due=+$('#dd').value||1;if(!name||!Number.isFinite(balance)||balance<=0||!Number.isFinite(emi)||emi<=0||rate<0||due<1||due>31)return alert('Check the loan name, balance, EMI, interest rate, and due day (1–31).');return add('debts',{name,balance,emi,rate,due_day:due,currency:$('#dc').value})};
+const addTodo=()=>{const text=$('#tt').value.trim();if(!text)return alert('Enter a task first.');return add('todos',{text})};
 const del=async(t,id)=>{await db.from(t).delete().eq('id',id);load()};
 const tick=async(id,v)=>{await db.from('todos').update({done:v}).eq('id',id);load()};
 const editBal=async(id,old)=>{const v=prompt('New balance',old);if(v!==null&&v!==''){await db.from('accounts').update({balance:+v}).eq('id',id);load()}};
