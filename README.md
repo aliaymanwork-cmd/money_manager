@@ -25,3 +25,10 @@
 Notes: your data is private to your login (row-level security). The exchange rate is editable on the Overview page.
 
 \n## Redesign notes\n\nThis version includes a cleaner responsive interface, improved navigation, more consistent cards and forms, focus states, and clearer validation for transaction, budget, account, task, and loan inputs. It also displays a helpful retry panel when database reads fail. Your existing Supabase tables and deployment flow are retained.\n
+## India and UAE workspaces
+
+The home screen lets you choose **Manage India** or **Manage UAE**. Records are tagged with a country (`IN` or `AE`) and each workspace uses its own currency (INR or AED); no currency conversion or combined totals are shown. Run the updated `schema.sql` in the Supabase SQL Editor before deploying this version. Existing records default to India (`IN`); review and reassign any UAE records in Supabase before using the new country switch.
+
+## Reminders
+
+You can create dated reminders for EMIs, bills, transfers, and other payments. Opt in to browser notifications from the Reminders page. Notifications are checked while the app is open; this version does not send alerts while the browser/app is fully closed, and it does not execute payments.

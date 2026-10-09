@@ -19,3 +19,21 @@ do $$ declare t text; begin
     execute format('drop policy if exists own on %I', t);
     execute format('create policy own on %I for all using (user_id=auth.uid()) with check (user_id=auth.uid())', t);
   end loop; end $$;
+
+
+-- Country workspaces: India and UAE data are kept fully separate.
+alter table entries add column if not exists country text not null default 'IN' check (country in ('IN','AE'));
+alter table debts add column if not exists country text not null default 'IN' check (country in ('IN','AE'));
+alter table todos add column if not exists country text not null default 'IN' check (country in ('IN','AE'));
+alter table accounts add column if not exists country text not null default 'IN' check (country in ('IN','AE'));
+alter table budgets add column if not exists country text not null default 'IN' check (country in ('IN','AE'));
+alter table todos add column if not exists due_date date;
+-- Replace the old budget uniqueness rule with country-aware uniqueness.
+alter table budgets drop constraint if exists budgets_user_id_category_key;
+create unique index if not exists budgets_user_category_country_key on budgets(user_id, category, country);
+
+-- Keep previously entered AED-denominated records in the UAE workspace.
+update entries set country='AE' where currency='AED';
+update debts set country='AE' where currency='AED';
+update accounts set country='AE' where currency='AED';
+update budgets set country='AE' where currency='AED';
