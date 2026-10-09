@@ -32,7 +32,7 @@ User question: ${String(question || 'Give me the next three practical steps to i
     // Use the recommended Interactions API and avoid retaining financial prompts server-side.
     const response = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY, 'Api-Revision': '2026-05-20' },
       body: JSON.stringify({ model: 'gemini-3.8-flash', input: prompt, store: false })
     });
     const payload = await response.json().catch(() => ({}));
@@ -40,18 +40,21 @@ User question: ${String(question || 'Give me the next three practical steps to i
       const apiMessage = payload?.error?.message || `Gemini API returned HTTP ${response.status}.`;
       return res.status(502).json({ error: `Gemini request failed: ${apiMessage}` });
     }
-    // Interactions responses contain generated text in model_output steps.
+    // Support the current steps schema and the legacy outputs schema during Google's API migration.
     const outputSteps = Array.isArray(payload?.steps) ? payload.steps.filter(step => step?.type === 'model_output') : [];
-    const answer = outputSteps.flatMap(step => Array.isArray(step?.content) ? step.content : [])
+    const stepText = outputSteps.flatMap(step => Array.isArray(step?.content) ? step.content : [])
       .filter(part => part?.type === 'text' || typeof part?.text === 'string')
-      .map(part => part.text || '')
-      .join('\n').trim();
+      .map(part => part.text || '').join('\n').trim();
+    const legacyText = Array.isArray(payload?.outputs)
+      ? payload.outputs.filter(part => part?.type === 'text' || typeof part?.text === 'string').map(part => part.text || '').join('\n').trim()
+      : '';
+    const answer = stepText || legacyText || (typeof payload?.output_text === 'string' ? payload.output_text.trim() : '');
     if (answer) return res.status(200).json({ text: answer });
     if (payload?.status === 'failed') {
       const detail = typeof payload?.error === 'string' ? payload.error : payload?.error?.message;
       return res.status(502).json({ error: `Gemini interaction failed${detail ? `: ${detail}` : '.'}` });
     }
-    return res.status(502).json({ error: 'Gemini returned no text. Check model access and API quota in Google AI Studio.' });
+    return res.status(502).json({ error: `Gemini returned no readable text (status: ${payload?.status || 'unknown'}). Check model access and API quota in Google AI Studio.` });
   } catch (error) {
     return res.status(500).json({ error: `AI Coach server error: ${error?.message || 'Unknown error'}` });
   }

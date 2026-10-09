@@ -32,7 +32,7 @@ button.ghost{background:transparent;color:var(--bad);padding:5px 8px}button.ghos
 pre{white-space:pre-wrap;font:inherit;overflow-wrap:anywhere}.card:has(>h2){padding-top:21px}
 svg{max-width:100%;height:auto}label{cursor:pointer}
 @media(min-width:900px){body{padding-bottom:24px}#app{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 18px}#app>h1,#app>.row:first-child,#app>input[type=month],#app>.hero,#app>.card:first-of-type{grid-column:1/-1}#app>.hero{margin-top:4px}#app>.card{margin:9px 0}#nav{padding-left:max(28px,calc((100vw - 1124px)/2));padding-right:max(28px,calc((100vw - 1124px)/2))}}
-@media(max-width:650px){body{padding-bottom:calc(74px + env(safe-area-inset-bottom))}main{padding:16px 14px 24px}.card{padding:16px;border-radius:15px;margin:11px 0}.hero{padding:20px}.row{gap:8px}.row>div:last-child{text-align:right}#nav{position:fixed;top:auto;bottom:0;left:0;right:0;justify-content:space-around;gap:0;padding:7px 4px calc(7px + env(safe-area-inset-bottom));border-top:1px solid var(--line);border-bottom:0;box-shadow:0 -8px 24px rgba(18,32,54,.06);overflow-x:auto}#nav button{flex:1 0 auto;padding:12px 9px;font-size:11px}#nav button:first-child{display:none}.big{font-size:27px}.grid{gap:7px}button{padding:11px 12px}}
+@media(max-width:650px){body{padding-bottom:calc(74px + env(safe-area-inset-bottom))}main{padding:16px 14px 24px}.card{padding:16px;border-radius:15px;margin:11px 0}.hero{padding:20px}.row{gap:8px}.row>div:last-child{text-align:right}#nav{position:fixed;top:auto;bottom:0;left:0;right:0;justify-content:space-around;gap:0;padding:7px 4px calc(7px + env(safe-area-inset-bottom));border-top:1px solid var(--line);border-bottom:0;box-shadow:0 -8px 24px rgba(18,32,54,.06);overflow-x:auto}#nav button{flex:1 0 auto;padding:12px 9px;font-size:11px}#nav button:first-child{display:block;margin-right:0;font-size:11px;font-weight:650;color:var(--mute)}.big{font-size:27px}.grid{gap:7px}button{padding:11px 12px}}
 @media(max-width:380px){main{padding:12px 10px}.grid{grid-template-columns:1fr}.hero .big{font-size:28px}#nav button{padding:11px 7px}}
 .welcome{max-width:790px;margin:clamp(24px,8vh,84px) auto;padding:clamp(8px,3vw,28px)}.eyebrow{font-size:11px;letter-spacing:2px;font-weight:800;color:var(--ok);margin-bottom:18px}.welcome h1{font-size:clamp(36px,6vw,62px);line-height:1.06;letter-spacing:-2px;margin:0 0 16px}.welcome h1 span{color:var(--ok)}.lead{font-size:16px;color:var(--mute);max-width:510px;margin:0 0 30px}.country-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.country-card{display:flex;align-items:center;gap:14px;text-align:left;white-space:normal;padding:22px 18px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);min-height:110px}.country-card:hover{background:#f1f5eb;color:var(--ink);transform:translateY(-3px)}.country-card span:nth-child(2){display:flex;flex-direction:column;gap:4px}.country-card b{font-size:15px}.country-card small{font-size:11px;color:var(--mute);font-weight:500}.flag{font-size:29px}.arrow{margin-left:auto;color:var(--ok);font-size:20px}.privacy-note{font-size:12px;color:var(--mute);margin-top:24px}#nav{box-shadow:0 4px 22px rgba(47,66,48,.035)}#nav button.on{border-radius:12px}@media(max-width:600px){.welcome{margin:30px auto;padding:10px 2px}.country-grid{grid-template-columns:1fr}.country-card{min-height:92px;padding:17px}.welcome h1{letter-spacing:-1.3px}}
 
@@ -186,18 +186,42 @@ const tick=async(id,v)=>{await db.from('todos').update({done:v}).eq('id',id);loa
 const editBal=async(id,old)=>{const v=prompt('New balance',old);if(v!==null&&v!==''){await db.from('accounts').update({balance:+v}).eq('id',id);load()}};
 async function setRate(v){if(!(v>0))return;S.rate=v;await db.from('settings').upsert({rate:v},{onConflict:'user_id'});render()}
 async function liveRate(){try{const j=await(await fetch('https://open.er-api.com/v6/latest/AED')).json();setRate(+j.rates.INR.toFixed(2))}catch(e){alert('Could not fetch the live rate. Type it in instead.')}}
-async function ask(){const o=$('#out');const question=$('#q').value.trim();if(!question){o.textContent='Type a question first, for example: What is my total balance in India?';return;}o.textContent='Thinking…';
-  const accountTotal=sumC(S.accounts,'balance');
-  // Exact balance questions can be answered reliably from the selected workspace without depending on Gemini availability.
-  if(/\b(total|current|overall|combined)?\s*(bank\s+)?balance\b|\bhow much money\b/i.test(question) && /\b(balance|money|accounts?|have)\b/i.test(question)){
-    const countryName=S.country==='IN'?'India':'UAE';
-    S.ai=S.accounts.length?`Your total recorded balance in ${countryName} is ${fmt(accountTotal,S.cur)}.\n\nThis total includes ${S.accounts.length} account(s) you've entered in your ${countryName} workspace. It is based on the records in Money Planner, not a live bank connection.`:`You haven't added any accounts in your ${S.country==='IN'?'India':'UAE'} workspace yet, so I can't calculate a total balance. Open Accounts and add your bank accounts or cash balances first.`;
-    o.textContent=S.ai;return;
+async function ask(){
+  const o=$('#out'), q=$('#q'), button=document.querySelector('#app button[onclick="ask()"]');
+  const question=q?.value.trim()||'';
+  if(!o)return;
+  if(!question){o.textContent='Type a question first, for example: What is my total balance in India?';return;}
+  if(button){button.disabled=true;button.textContent='Working…';}
+  o.textContent='Thinking…';
+  try{
+    const accountTotal=sumC(S.accounts,'balance');
+    if(/\b(total|current|overall|combined)?\s*(bank\s+)?balance\b|\bhow much money\b/i.test(question) && /\b(balance|money|accounts?|have)\b/i.test(question)){
+      const countryName=S.country==='IN'?'India':'UAE';
+      S.ai=S.accounts.length?`Your total recorded balance in ${countryName} is ${fmt(accountTotal,S.cur)}.\n\nThis total includes ${S.accounts.length} account(s) you've entered in your ${countryName} workspace. It is based on the records in Money Planner, not a live bank connection.`:`You haven't added any accounts in your ${S.country==='IN'?'India':'UAE'} workspace yet, so I can't calculate a total balance. Open Accounts and add your bank accounts or cash balances first.`;
+      o.textContent=S.ai;return;
+    }
+    const sessionResult=await db.auth.getSession();
+    const session=sessionResult?.data?.session;
+    if(sessionResult?.error||!session){S.ai='Your login session has expired. Please sign in again, then retry your question.';o.textContent=S.ai;return;}
+    const t=totals(),sp={};
+    inMonth().filter(x=>x.kind==='expense').forEach(x=>sp[x.category]=(sp[x.category]||0)+cv(x.amount,x.currency,S.cur));
+    const summary={note:`Selected financial workspace: ${S.country==='IN'?'India':'UAE'}. Do not convert or combine currencies or infer missing data.`,country:S.country,currency:S.cur,month:S.month,...t,balances:accountTotal,accounts:S.accounts.map(({name,kind,balance,currency})=>({name,kind,balance,currency})),budgets:S.budgets.map(({category,amount,currency})=>({category,amount,currency})),spendByCategory:sp,debts:S.debts.map(({name,balance,emi,rate,due_day,currency})=>({name,balance,emi,rate,due_day,currency})),openTodos:S.todos.filter(x=>!x.done).map(x=>x.text)};
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),55000);
+    try{
+      const r=await fetch('/api/advice',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({summary,question}),signal:controller.signal,cache:'no-store'});
+      const payload=await r.json().catch(()=>({}));
+      if(!r.ok) S.ai=payload.error||`AI Coach request failed (HTTP ${r.status}). Check Vercel function logs.`;
+      else S.ai=payload.text||payload.error||'Gemini returned an empty answer. Please try again.';
+    } finally { clearTimeout(timeout); }
+    o.textContent=S.ai;
+  }catch(e){
+    S.ai=e?.name==='AbortError'?'The AI request took too long and was stopped. Please try again; if it repeats, check the Vercel function logs and Gemini API quota.':`AI Coach error: ${e?.message||'Could not complete the request.'}`;
+    o.textContent=S.ai;
+  }finally{
+    if(button){button.disabled=false;button.textContent='Create my action plan ✦';}
   }
-  const{data,error:sessionError}=await db.auth.getSession();if(sessionError||!data?.session){S.ai='Your login session has expired. Please sign in again, then retry your question.';o.textContent=S.ai;return;}
-  const t=totals(),sp={};inMonth().filter(x=>x.kind=='expense').forEach(x=>sp[x.category]=(sp[x.category]||0)+cv(x.amount,x.currency,S.cur));
-  const summary={note:`Selected financial workspace: ${S.country==='IN'?'India':'UAE'}. Do not convert or combine currencies or infer missing data.`,country:S.country,currency:S.cur,month:S.month,...t,balances:accountTotal,accounts:S.accounts.map(({name,kind,balance,currency})=>({name,kind,balance,currency})),budgets:S.budgets.map(({category,amount,currency})=>({category,amount,currency})),spendByCategory:sp,debts:S.debts.map(({name,balance,emi,rate,due_day,currency})=>({name,balance,emi,rate,due_day,currency})),openTodos:S.todos.filter(x=>!x.done).map(x=>x.text)};
-  try{const r=await fetch('/api/advice',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify({summary,question})});const payload=await r.json().catch(()=>({}));S.ai=payload.text||(payload.error||`AI Coach request failed (HTTP ${r.status}). Check the Vercel function logs and environment variables.`)}catch(e){S.ai='Could not reach the AI Coach endpoint. Confirm the app is deployed on Vercel and that /api/advice is available.'}o.textContent=S.ai}
+}
 async function copyPrev(){const d=new Date(S.month+'-01');d.setMonth(d.getMonth()-1);const rows=inMonth(d.toISOString().slice(0,7));
   if(!rows.length)return alert('Nothing recorded last month.');if(!confirm('Copy '+rows.length+' items from last month into '+S.month+'?'))return;
   const{error}=await db.from('entries').insert(rows.map(x=>({kind:x.kind,title:x.title,amount:x.amount,currency:x.currency,category:x.category,date:S.month+'-'+String(Math.min(28,+x.date.slice(8))).padStart(2,'0')})));if(error)alert(error.message);else load()}

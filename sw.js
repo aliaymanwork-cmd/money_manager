@@ -1,6 +1,13 @@
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('fetch', e => {
-  const r = e.request, u = new URL(r.url);
-  if (r.method !== 'GET' || u.origin !== location.origin || u.pathname.startsWith('/api')) return;
-  e.respondWith(fetch(r).then(x => { const c = x.clone(); caches.open('v1').then(k => k.put(r, c)); return x; }).catch(() => caches.match(r)));
+const CACHE_NAME = 'money-planner-v2';
+self.addEventListener('install', event => { self.skipWaiting(); });
+self.addEventListener('activate', event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
+});
+self.addEventListener('fetch', event => {
+  const request = event.request, url = new URL(request.url);
+  if (request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api')) return;
+  event.respondWith(fetch(request, { cache: 'no-store' }).then(response => {
+    if (response.ok) { const copy = response.clone(); caches.open(CACHE_NAME).then(cache => cache.put(request, copy)); }
+    return response;
+  }).catch(() => caches.match(request)));
 });
