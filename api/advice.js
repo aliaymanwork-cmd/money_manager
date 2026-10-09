@@ -29,22 +29,29 @@ Financial data (JSON): ${JSON.stringify(summary)}
 
 User question: ${String(question || 'Give me the next three practical steps to improve my finances.').slice(0, 2000)}`;
 
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
+    // Use the recommended Interactions API and avoid retaining financial prompts server-side.
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      body: JSON.stringify({ model: 'gemini-3.8-flash', input: prompt, store: false })
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       const apiMessage = payload?.error?.message || `Gemini API returned HTTP ${response.status}.`;
       return res.status(502).json({ error: `Gemini request failed: ${apiMessage}` });
     }
-    const answer = payload?.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('').trim();
+    // Interactions responses contain generated text in model_output steps.
+    const outputSteps = Array.isArray(payload?.steps) ? payload.steps.filter(step => step?.type === 'model_output') : [];
+    const answer = outputSteps.flatMap(step => Array.isArray(step?.content) ? step.content : [])
+      .filter(part => part?.type === 'text' || typeof part?.text === 'string')
+      .map(part => part.text || '')
+      .join('\n').trim();
     if (answer) return res.status(200).json({ text: answer });
-    if (payload?.promptFeedback?.blockReason) {
-      return res.status(502).json({ error: `Gemini blocked this request (${payload.promptFeedback.blockReason}). Try asking in a different way.` });
+    if (payload?.status === 'failed') {
+      const detail = typeof payload?.error === 'string' ? payload.error : payload?.error?.message;
+      return res.status(502).json({ error: `Gemini interaction failed${detail ? `: ${detail}` : '.'}` });
     }
-    return res.status(502).json({ error: 'Gemini returned an empty response. Check your Gemini API key, model access, and API quota in Google AI Studio.' });
+    return res.status(502).json({ error: 'Gemini returned no text. Check model access and API quota in Google AI Studio.' });
   } catch (error) {
     return res.status(500).json({ error: `AI Coach server error: ${error?.message || 'Unknown error'}` });
   }
