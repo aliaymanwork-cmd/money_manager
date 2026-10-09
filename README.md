@@ -32,3 +32,8 @@ The home screen lets you choose **Manage India** or **Manage UAE**. Records are 
 ## Reminders
 
 You can create dated reminders for EMIs, bills, transfers, and other payments. Opt in to browser notifications from the Reminders page. Notifications are checked while the app is open; this version does not send alerts while the browser/app is fully closed, and it does not execute payments.
+
+
+## AI Coach troubleshooting
+
+The AI Coach now reports configuration/API errors instead of silently displaying “No answer from Gemini.” In Vercel, confirm `GEMINI_API_KEY`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` are set for the deployment environment, then redeploy. Check the Vercel function logs if Gemini reports an API key, quota, model-access, or request error. Simple balance questions are answered directly from the currently selected workspace's saved account records and do not require Gemini; they are not live bank balances.
