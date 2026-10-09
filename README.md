@@ -46,3 +46,14 @@ The AI Coach calls Vercel AI Gateway from the server-side `/api/advice` function
 The app sends the currently selected workspace's saved account balances, loans and EMI due days, open reminders with due dates, budgets, monthly spending categories, and recent transactions to the AI endpoint after checking the Supabase login session. India and UAE records remain separated. Balance answers are based on records entered in this app, not a live bank connection. The AI Coach only advises; it does not create reminders or make payments.
 
 For EMI dates, loan records use the recurring `due_day` field. For specific reminder dates, add a due date in the Reminders tab. Keep your gateway API key private and review model pricing/credits in Vercel before deploying.
+
+
+## v3: Borrowed, account-linked payments, smoother app
+
+**Run the updated `schema.sql` in Supabase > SQL Editor first** (safe to run again), then redeploy.
+
+- **Transactions**: choose Income, Expense or **Borrowed**. Every entry now asks which account it goes into or comes out of, and the account balance updates automatically (income and borrowed add, expenses subtract). Deleting an entry reverses the balance change.
+- **Borrowed tab**: type a person's name once; the same name (any capitalisation) always adds to that person. Each person shows total borrowed, repaid and what is still owed. Use **Settle amount** (or **Settle full**) and pick the account the money comes from; that account is reduced and the person's balance goes down.
+- **Loans**: each loan has **Pay now** with an amount and the account to pay from. The account and the loan balance both go down, and the payment is saved in Transactions.
+- **Reminders**: all active loans appear with their next EMI date (a loan paid for the month moves to next month), plus the people you owe, plus your own reminders. Loans and dated reminders also appear under "Due in the next 7 days" on Overview.
+- **Smoother**: saving no longer reloads everything; the screen updates in place, keeps what you typed, and only one action runs at a time. The app no longer reloads when you switch browser tabs or when the login token refreshes.

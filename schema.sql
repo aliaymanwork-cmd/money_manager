@@ -37,3 +37,13 @@ update entries set country='AE' where currency='AED';
 update debts set country='AE' where currency='AED';
 update accounts set country='AE' where currency='AED';
 update budgets set country='AE' where currency='AED';
+
+-- v3: borrowed money, account-linked transactions and loan payments.
+-- 'borrowed' = money you received from a person, 'settled' = money you paid back to them,
+-- 'loanpay' = a payment towards a loan. None of these count as income or expense in your monthly totals.
+alter table entries drop constraint if exists entries_kind_check;
+alter table entries add constraint entries_kind_check check (kind in ('income','expense','borrowed','settled','loanpay'));
+alter table entries add column if not exists account_id uuid references accounts(id) on delete set null;
+alter table entries add column if not exists debt_id uuid references debts(id) on delete set null;
+alter table entries add column if not exists person text;
+create index if not exists entries_person_idx on entries(user_id, country, lower(person));
