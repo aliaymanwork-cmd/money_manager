@@ -48,6 +48,41 @@ input,select,textarea{border:2px solid #efe5d5;border-radius:14px;background:#ff
 @keyframes bob{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-10px) rotate(1deg)}}@keyframes floaty{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-9px) rotate(5deg)}}
 @media(max-width:700px){.login-shell{grid-template-columns:1fr;max-width:430px;margin:18px auto;border-radius:27px}.login-art{min-height:250px;max-height:270px}.money-mascot{transform:scale(.68);transform-origin:center center;margin:-24px 0}.art-caption{bottom:13px}.art-caption b{font-size:15px}.art-caption span{font-size:10px}.coin-one{left:14%;top:18%}.coin-two{right:14%;top:24%}.login-panel{padding:25px 24px 28px}.brand-mark{margin-bottom:24px}.login-panel h1{font-size:38px}.welcome:before{right:3%;top:-2%;font-size:34px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+
+/* Alignment polish: consistent page width, balanced login form, and clear country actions */
+#app{width:100%;min-width:0}
+main{width:100%;max-width:1240px;margin-inline:auto}
+.login-shell{width:min(100%,1000px);min-height:0;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);margin:clamp(20px,5vh,54px) auto;border-radius:30px;align-items:stretch}
+.login-art{min-height:590px}
+.login-panel{min-width:0;padding:clamp(28px,4vw,52px);justify-content:center}
+.login-panel h1{max-width:440px}
+.login-form{width:100%;max-width:410px}
+.login-form input{width:100%;min-height:50px}
+.login-button{width:100%;min-height:50px}
+.login-foot{max-width:410px;width:100%}
+.welcome{width:100%;max-width:850px;margin:clamp(28px,7vh,76px) auto;padding:clamp(18px,3vw,32px)}
+.welcome h1{max-width:760px}
+.country-grid{align-items:stretch;gap:18px;margin-top:28px}
+.country-card{width:100%;min-width:0;min-height:126px;padding:22px;cursor:pointer;position:relative;isolation:isolate;outline-offset:4px}
+.country-card:focus-visible{outline:3px solid #398260}
+.country-card:active{transform:translateY(1px);box-shadow:0 3px 0 #eee4d4}
+.country-card span:nth-child(2){flex:1;min-width:0}
+.country-card small{line-height:1.5}
+.arrow{flex:0 0 auto}
+.loading-panel,.load-error{max-width:650px;margin:clamp(48px,12vh,110px) auto;padding:clamp(28px,5vw,54px);text-align:center;background:var(--card);border:2px solid var(--line);border-radius:30px;box-shadow:var(--shadow)}
+.loading-mascot,.error-emoji{font-size:54px;line-height:1.2;margin-bottom:18px;animation:bob 2.6s ease-in-out infinite}
+.loading-panel h1,.load-error h1{font-size:clamp(25px,4vw,36px);margin:0 0 10px}
+.loading-panel p,.load-error p{color:var(--mute);margin:0 auto 18px;max-width:430px}
+.loading-track{height:9px;max-width:260px;margin:22px auto 0;background:#eee5d7;border-radius:99px;overflow:hidden}
+.loading-track i{display:block;width:38%;height:100%;border-radius:99px;background:linear-gradient(90deg,#398260,#9ac77e);animation:loading 1.2s ease-in-out infinite alternate}
+@keyframes loading{from{transform:translateX(-15%)}to{transform:translateX(180%)}}
+.error-detail{padding:10px 12px;border-radius:12px;background:#fff4ee;color:#8e4b40;font-size:12px;overflow-wrap:anywhere}
+.error-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-top:20px}
+.secondary-button{background:#f0f4e9;color:#355d43;box-shadow:none;border:1px solid #dce8d2}
+@media(max-width:760px){main{padding:14px 12px 24px}.login-shell{width:100%;max-width:480px;grid-template-columns:minmax(0,1fr);margin:12px auto 24px;border-radius:25px}.login-art{min-height:230px;max-height:250px}.money-mascot{transform:scale(.67);transform-origin:center center;margin:-28px 0}.login-panel{padding:25px clamp(20px,6vw,32px) 30px}.brand-mark{margin-bottom:20px}.login-panel h1{font-size:clamp(32px,9vw,40px)}.login-panel .lead{margin-bottom:18px}.login-foot{margin-top:20px}.welcome{margin:20px auto;padding:16px 6px}.welcome h1{font-size:clamp(34px,9vw,46px);letter-spacing:-1.2px}.lead{font-size:14px}.country-grid{grid-template-columns:minmax(0,1fr);gap:14px;margin-top:22px}.country-card{min-height:96px;padding:17px 16px}.privacy-note{line-height:1.6}}
+@media(min-width:761px) and (max-width:980px){.login-shell{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)}.login-panel{padding:30px}.login-art{min-height:550px}}
+@media(prefers-reduced-motion:reduce){.loading-mascot,.loading-track i{animation:none}}
+
 </style></head><body><main id="app"></main><nav id="nav" hidden></nav>
 <script>
 if(!window.CONFIG||CONFIG.SUPABASE_URL.startsWith('PASTE')){document.getElementById('app').innerHTML='<div class="card"><b>Almost there</b><br>Open <code>config.js</code> and paste your Supabase URL and anon key, then redeploy.</div>';throw new Error('config missing')}
@@ -66,10 +101,18 @@ const inMonth=(k=S.month)=>S.entries.filter(x=>x.date.startsWith(k));
 
 async function load(){
   const q=t=>db.from(t);
-  if(!S.country){render();return} S.cur=S.country==='IN'?'INR':'AED'; const [e,d,t,a,b,s]=await Promise.all([q('entries').select('*').eq('country',S.country).order('date',{ascending:false}),q('debts').select('*').eq('country',S.country).order('rate',{ascending:false}),q('todos').select('*').eq('country',S.country).order('created'),q('accounts').select('*').eq('country',S.country).order('name'),q('budgets').select('*').eq('country',S.country).order('category'),q('settings').maybeSingle()]);
-  const failed=[e,d,t,a,b,s].find(x=>x.error);
-  if(failed){$('#app').innerHTML=`<div class="card"><h1>Couldn't load your planner</h1><p class="mute">${esc(failed.error.message||'Please check your connection and database setup.')}</p><button onclick="load()">Try again</button></div>`;return}
-  S.entries=e.data||[];S.debts=d.data||[];S.todos=t.data||[];S.accounts=a.data||[];S.budgets=b.data||[];if(s.data)S.rate=+s.data.rate;render();notifyDue();
+  if(!S.country){render();return}
+  S.cur=S.country==='IN'?'INR':'AED';
+  $('#nav').hidden=true;
+  $('#app').innerHTML=`<section class="loading-panel"><div class="loading-mascot">🐣</div><h1>Getting your ${S.country==='IN'?'India':'UAE'} space ready…</h1><p>Keeping your accounts separate and tidy.</p><div class="loading-track"><i></i></div></section>`;
+  try {
+    const [e,d,t,a,b,s]=await Promise.all([q('entries').select('*').eq('country',S.country).order('date',{ascending:false}),q('debts').select('*').eq('country',S.country).order('rate',{ascending:false}),q('todos').select('*').eq('country',S.country).order('created'),q('accounts').select('*').eq('country',S.country).order('name'),q('budgets').select('*').eq('country',S.country).order('category'),q('settings').maybeSingle()]);
+    const failed=[e,d,t,a,b,s].find(x=>x.error);
+    if(failed){$('#app').innerHTML=`<section class="load-error"><div class="error-emoji">🧩</div><h1>Almost there!</h1><p>We couldn't load this workspace. Please check your database setup and try again.</p><p class="error-detail">${esc(failed.error.message||'Unknown database error')}</p><div class="error-actions"><button onclick="load()">Try again</button><button class="secondary-button" onclick="switchCountry()">Back to countries</button></div></section>`;return}
+    S.entries=e.data||[];S.debts=d.data||[];S.todos=t.data||[];S.accounts=a.data||[];S.budgets=b.data||[];if(s.data)S.rate=+s.data.rate;render();notifyDue();
+  } catch(err) {
+    $('#app').innerHTML=`<section class="load-error"><div class="error-emoji">🌦️</div><h1>Couldn't open this workspace</h1><p>Please check your connection and Supabase configuration, then try again.</p><p class="error-detail">${esc(err?.message||'Unexpected error')}</p><div class="error-actions"><button onclick="load()">Try again</button><button class="secondary-button" onclick="switchCountry()">Back to countries</button></div></section>`;
+  }
 }
 function totals(){const m=inMonth(),inc=sumC(m.filter(x=>x.kind=='income'),'amount'),exp=sumC(m.filter(x=>x.kind=='expense'),'amount'),emi=sumC(S.debts,'emi');return{inc,exp,emi,left:inc-exp-emi}}
 // Avalanche payoff in display currency: highest interest first, freed EMIs roll forward.
@@ -131,7 +174,7 @@ function render(){
 function enableReminders(){if(!('Notification' in window))return alert('This browser does not support notifications.');Notification.requestPermission().then(p=>{if(p==='granted'){alert('Notifications enabled. Keep the app open to receive due reminders.');notifyDue()}else alert('Notifications were not enabled. You can change this in browser settings.')})}
 function notifyDue(){if(!S.country||!('Notification' in window)||Notification.permission!=='granted')return;const today=new Date().toISOString().slice(0,10);S.todos.filter(x=>!x.done&&x.due_date&&x.due_date<=today).forEach(x=>{const k='reminder:'+S.country+':'+x.id+':'+today;if(!localStorage.getItem(k)){new Notification('Money Planner reminder',{body:x.text});localStorage.setItem(k,'1')}});dueSoon().filter(o=>o.n===0).forEach(o=>{const k='emi:'+S.country+':'+o.x.id+':'+today;if(!localStorage.getItem(k)){new Notification('EMI due today',{body:o.x.name+' · '+fmt(o.x.emi,o.x.currency||S.cur)});localStorage.setItem(k,'1')}})}
 setInterval(notifyDue,30*60*1000);
-function chooseCountry(c){S.country=c;S.cur=c==='IN'?'INR':'AED';S.tab='home';load()}function switchCountry(){S.country='';S.ai='';render()}
+async function chooseCountry(c){if(!['IN','AE'].includes(c))return;const {data,error}=await db.auth.getSession();if(error||!data.session){login('Please sign in again to open your workspace.');return;}S.country=c;S.cur=c==='IN'?'INR':'AED';S.tab='home';S.ai='';await load()}function switchCountry(){S.country='';S.ai='';S.tab='home';render()}
 async function add(t,row,opt){row.country=S.country;const{error}=opt?await db.from(t).upsert(row,opt):await db.from(t).insert(row);if(error)alert(error.message);else load()}
 const addEntry=()=>{const title=$('#ti').value.trim(),amount=+$('#am').value,date=$('#dt').value;if(!title||!Number.isFinite(amount)||amount<=0||!date)return alert('Enter a description, a valid amount greater than zero, and a date.');return add('entries',{kind:$('#k').value,title,amount,currency:$('#cu').value,date,category:$('#ca').value.trim()||'General'})};
 const addBudget=()=>{const category=$('#bc').value.trim(),amount=+$('#ba').value;if(!category||!Number.isFinite(amount)||amount<=0)return alert('Enter a category and a budget greater than zero.');return add('budgets',{category,amount,currency:$('#bu').value},{onConflict:'user_id,category,country'})};
