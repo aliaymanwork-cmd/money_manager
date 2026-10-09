@@ -186,6 +186,7 @@ const tick=async(id,v)=>{await db.from('todos').update({done:v}).eq('id',id);loa
 const editBal=async(id,old)=>{const v=prompt('New balance',old);if(v!==null&&v!==''){await db.from('accounts').update({balance:+v}).eq('id',id);load()}};
 async function setRate(v){if(!(v>0))return;S.rate=v;await db.from('settings').upsert({rate:v},{onConflict:'user_id'});render()}
 async function liveRate(){try{const j=await(await fetch('https://open.er-api.com/v6/latest/AED')).json();setRate(+j.rates.INR.toFixed(2))}catch(e){alert('Could not fetch the live rate. Type it in instead.')}}
+function nextDueDate(dueDay){const now=new Date();now.setHours(0,0,0,0);const y=now.getFullYear(),m=now.getMonth();const day=Math.max(1,Math.min(31,Number(dueDay)||1));let d=new Date(y,m,Math.min(day,new Date(y,m+1,0).getDate()));if(d<now)d=new Date(y,m+1,Math.min(day,new Date(y,m+2,0).getDate()));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 async function ask(){
   const o=$('#out'), q=$('#q'), button=document.querySelector('#app button[onclick="ask()"]');
   const question=q?.value.trim()||'';
@@ -195,7 +196,9 @@ async function ask(){
   o.textContent='Thinking…';
   try{
     const accountTotal=sumC(S.accounts,'balance');
-    if(/\b(total|current|overall|combined)?\s*(bank\s+)?balance\b|\bhow much money\b/i.test(question) && /\b(balance|money|accounts?|have)\b/i.test(question)){
+    if(/\b(total|current|overall|combined)?\s*(bank\s+)?(balance|balence|balances)\b|\bhow much money\b/i.test(question) && /\b(balance|balence|money|accounts?|have)\b/i.test(question)){
+      const askedIndia=/\bindia\b/i.test(question),askedUae=/\b(uae|united arab emirates|dubai)\b/i.test(question);
+      if((askedIndia&&S.country!=='IN')||(askedUae&&S.country!=='AE')){S.ai=`You are currently viewing the ${S.country==='IN'?'India':'UAE'} workspace. Switch to Manage ${askedIndia?'India':'UAE'} to see that workspace’s recorded balances. Your country workspaces are kept separate.`;o.textContent=S.ai;return;}
       const countryName=S.country==='IN'?'India':'UAE';
       S.ai=S.accounts.length?`Your total recorded balance in ${countryName} is ${fmt(accountTotal,S.cur)}.\n\nThis total includes ${S.accounts.length} account(s) you've entered in your ${countryName} workspace. It is based on the records in Money Planner, not a live bank connection.`:`You haven't added any accounts in your ${S.country==='IN'?'India':'UAE'} workspace yet, so I can't calculate a total balance. Open Accounts and add your bank accounts or cash balances first.`;
       o.textContent=S.ai;return;
@@ -205,18 +208,18 @@ async function ask(){
     if(sessionResult?.error||!session){S.ai='Your login session has expired. Please sign in again, then retry your question.';o.textContent=S.ai;return;}
     const t=totals(),sp={};
     inMonth().filter(x=>x.kind==='expense').forEach(x=>sp[x.category]=(sp[x.category]||0)+cv(x.amount,x.currency,S.cur));
-    const summary={note:`Selected financial workspace: ${S.country==='IN'?'India':'UAE'}. Do not convert or combine currencies or infer missing data.`,country:S.country,currency:S.cur,month:S.month,...t,balances:accountTotal,accounts:S.accounts.map(({name,kind,balance,currency})=>({name,kind,balance,currency})),budgets:S.budgets.map(({category,amount,currency})=>({category,amount,currency})),spendByCategory:sp,debts:S.debts.map(({name,balance,emi,rate,due_day,currency})=>({name,balance,emi,rate,due_day,currency})),openTodos:S.todos.filter(x=>!x.done).map(x=>x.text)};
+    const summary={note:`Selected financial workspace: ${S.country==='IN'?'India':'UAE'}. Do not convert or combine currencies or infer missing data.`,today:new Date().toLocaleDateString('en-CA'),country:S.country,currency:S.cur,month:S.month,...t,balances:accountTotal,accounts:S.accounts.map(({name,kind,balance,currency})=>({name,kind,balance,currency})),budgets:S.budgets.map(({category,amount,currency})=>({category,amount,currency})),spendByCategory:sp,debts:S.debts.map(({name,balance,emi,rate,due_day,currency})=>({name,balance,emi,rate,due_day,currency,nextDueDate:nextDueDate(due_day)})),openTodos:S.todos.filter(x=>!x.done).map(({text,due_date,created})=>({text,due_date:due_date||null,created:created||null})),recentTransactions:S.entries.slice(0,80).map(({date,kind,title,category,amount,currency})=>({date,kind,title,category,amount,currency}))};
     const controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),55000);
     try{
       const r=await fetch('/api/advice',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({summary,question}),signal:controller.signal,cache:'no-store'});
       const payload=await r.json().catch(()=>({}));
       if(!r.ok) S.ai=payload.error||`AI Coach request failed (HTTP ${r.status}). Check Vercel function logs.`;
-      else S.ai=payload.text||payload.error||'Gemini returned an empty answer. Please try again.';
+      else S.ai=payload.text||payload.error||'Vercel AI Gateway returned an empty answer. Please try again.';
     } finally { clearTimeout(timeout); }
     o.textContent=S.ai;
   }catch(e){
-    S.ai=e?.name==='AbortError'?'The AI request took too long and was stopped. Please try again; if it repeats, check the Vercel function logs and Gemini API quota.':`AI Coach error: ${e?.message||'Could not complete the request.'}`;
+    S.ai=e?.name==='AbortError'?'The AI request took too long and was stopped. Please try again; if it repeats, check the Vercel function logs and AI Gateway credits/model access.':`AI Coach error: ${e?.message||'Could not complete the request.'}`;
     o.textContent=S.ai;
   }finally{
     if(button){button.disabled=false;button.textContent='Create my action plan ✦';}

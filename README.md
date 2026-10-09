@@ -10,13 +10,13 @@
 **2. Config**
 - Open `config.js` and paste the Project URL and anon key.
 
-**3. Gemini key**
-- aistudio.google.com/apikey > Create API key.
+**3. Vercel AI Gateway key**
+- Open Vercel > AI Gateway and create an API key. Check the selected model’s pricing and available credits before using it.
 
 **4. Deploy (Vercel)**
 - Put this folder on GitHub (new private repo, upload the files).
 - vercel.com > Add New > Project > import the repo > before Deploy, add Environment Variables:
-  `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `GEMINI_API_KEY` > Deploy.
+  `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `AI_GATEWAY_API_KEY` > Deploy. Optional: set `AI_GATEWAY_MODEL` to a model ID shown in the Vercel AI Gateway model catalogue (default: `anthropic/claude-sonnet-4.5`).
 - If you add the variables after deploying, click Redeploy.
 
 **5. Phone**
@@ -36,4 +36,13 @@ You can create dated reminders for EMIs, bills, transfers, and other payments. O
 
 ## AI Coach troubleshooting
 
-The AI Coach now reports configuration/API errors instead of silently displaying “No answer from Gemini.” In Vercel, confirm `GEMINI_API_KEY`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` are set for the deployment environment, then redeploy. Check the Vercel function logs if Gemini reports an API key, quota, model-access, or request error. Simple balance questions are answered directly from the currently selected workspace's saved account records and do not require Gemini; they are not live bank balances.
+The AI Coach now reports configuration/API errors instead of silently displaying “No answer from the AI model.” In Vercel, confirm `AI_GATEWAY_API_KEY`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` are set for the deployment environment, then redeploy. Check the Vercel function logs if AI Gateway reports a key, credit, model-access, or request error. Simple balance questions are answered directly from the currently selected workspace's saved account records and do not require an AI model; they are not live bank balances.
+
+
+## Vercel AI Gateway Money Coach
+
+The AI Coach calls Vercel AI Gateway from the server-side `/api/advice` function. Set `AI_GATEWAY_API_KEY` in Vercel Environment Variables. You can optionally set `AI_GATEWAY_MODEL` to a model ID currently listed in the Vercel AI Gateway catalogue. Do not put the gateway key in `config.js` or frontend code.
+
+The app sends the currently selected workspace's saved account balances, loans and EMI due days, open reminders with due dates, budgets, monthly spending categories, and recent transactions to the AI endpoint after checking the Supabase login session. India and UAE records remain separated. Balance answers are based on records entered in this app, not a live bank connection. The AI Coach only advises; it does not create reminders or make payments.
+
+For EMI dates, loan records use the recurring `due_day` field. For specific reminder dates, add a due date in the Reminders tab. Keep your gateway API key private and review model pricing/credits in Vercel before deploying.
