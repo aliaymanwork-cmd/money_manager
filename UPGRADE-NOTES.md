@@ -18,3 +18,10 @@ This build fixes the Gemini model error by using Google's Gemini Interactions AP
 - PIN lock is a convenience screen gate, not a security boundary. Use Supabase authentication and your device lock for real protection.
 - Excel export is an Excel-compatible HTML spreadsheet (`.xls`), not a native `.xlsx` workbook.
 - Receipt images are stored as base64 data in the private `entries` table and are limited to 1 MB per image. Avoid attaching sensitive documents.
+
+## UI refresh
+
+- All styling was consolidated into one stylesheet in `index.html` (the old stacked redesigns were removed).
+- Mobile: bottom tab bar with a **More** sheet, quick-add button on Overview, 16px form fields (no iOS zoom), larger tap targets, safe-area support, automatic dark mode.
+- Desktop: left sidebar navigation.
+- Redeploy and reload once; the service-worker cache was bumped to `v5` so phones pick up the new design.

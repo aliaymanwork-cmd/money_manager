@@ -1,238 +1,312 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>PocketPlan — Personal Finance OS</title>
-<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#080d18"><link rel="apple-touch-icon" href="/icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><script src="/config.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#f1f3f8" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#0d1020" media="(prefers-color-scheme: dark)"><meta name="color-scheme" content="light dark"><link rel="apple-touch-icon" href="/icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><script src="/config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400..800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 <style>
-:root{color-scheme:light;--bg:#f7f4ec;--card:#fffdf8;--ink:#24352d;--mute:#778078;--ok:#34745b;--ok-dark:#285d49;--bad:#c95d57;--line:#e9e5da;--soft:#eaf2e9;--shadow:0 12px 35px rgba(47,66,48,.07)}
-
-*{box-sizing:border-box}html{min-height:100%;background:var(--bg)}body{margin:0;font:14px/1.6 Inter,Manrope,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);padding:env(safe-area-inset-top) 0 calc(78px + env(safe-area-inset-bottom))}
-main{max-width:1180px;margin:auto;padding:28px 28px 36px}h1{font-size:clamp(22px,3vw,29px);line-height:1.2;letter-spacing:-.7px;margin:6px 0 8px;font-weight:800}h2{font-size:16px;letter-spacing:-.2px;margin:0 0 14px;font-weight:750}h3{font-size:14px;margin:0 0 8px}
-#app>h1{margin:0 0 18px}
-#app>.row:first-child{margin-bottom:18px;align-items:center}
-.hero{background:radial-gradient(circle at 90% 10%,rgba(220,238,202,.26),transparent 34%),linear-gradient(120deg,#284d3c 0%,#39765c 58%,#6b9972 100%);color:#fff;border:0;box-shadow:0 16px 38px rgba(52,116,91,.18);padding:27px;position:relative;overflow:hidden}
-.hero .mute{color:#d2edf0}.hero .row{border-color:rgba(255,255,255,.16)}.hero .big{font-size:clamp(30px,4vw,40px);letter-spacing:-1.2px;margin:5px 0 12px}
-.card{background:var(--card);border-radius:20px;padding:21px;margin:14px 0;border:1px solid var(--line);box-shadow:var(--shadow);min-width:0;transition:transform .2s,box-shadow .2s}.card:hover{box-shadow:0 15px 38px rgba(47,66,48,.09)}@keyframes rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
-.big{font-size:30px;font-weight:800;letter-spacing:-.8px}.ok{color:var(--ok)}.bad{color:var(--bad)}.mute{color:var(--mute);font-size:12px}
-.row{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);align-items:center;min-width:0}.row:last-child{border-bottom:0}.row>div{min-width:0}.row>div:first-child{overflow-wrap:anywhere}
-input,select,textarea{width:100%;min-width:0;padding:12px 13px;margin:5px 0 8px;border-radius:11px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
-input:focus,select:focus,textarea:focus{border-color:var(--ok);box-shadow:0 0 0 3px rgba(8,127,140,.12)}
-input::placeholder,textarea::placeholder{color:var(--mute);opacity:.8}
-button{padding:11px 16px;border:0;border-radius:11px;background:var(--ok);color:#fff;font:650 13px Inter,Manrope,system-ui,sans-serif;cursor:pointer;transition:transform .15s,background .15s;white-space:nowrap}
-button:hover{background:var(--ok-dark)}button:active{transform:scale(.98)}button:focus-visible{outline:3px solid rgba(8,127,140,.28);outline-offset:2px}
-button.ghost{background:transparent;color:var(--bad);padding:5px 8px}button.ghost:hover{background:rgba(217,72,95,.08)}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-#nav{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:4px;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:10px max(20px,calc((100vw - 1124px)/2));padding-bottom:10px}
-#nav button{flex:0 0 auto;background:transparent;color:var(--mute);border-radius:10px;padding:10px 14px;font-size:12px}
-#nav button.on{color:var(--ok);background:var(--soft);box-shadow:none}
-#nav button:first-child{margin-right:auto;font-size:14px;font-weight:800;color:var(--ink)}
-.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin:7px 0 12px}.bar i{display:block;height:100%;background:var(--ok);border-radius:99px;transition:width .3s}.bar i.over{background:var(--bad)}
-.pill{display:inline-flex;gap:2px;border:1px solid var(--line);border-radius:11px;overflow:hidden;padding:3px;background:var(--bg)}.pill button{border-radius:8px;background:none;color:var(--mute);padding:7px 12px}.pill button.on{background:var(--ok);color:#fff}
-pre{white-space:pre-wrap;font:inherit;overflow-wrap:anywhere}.card:has(>h2){padding-top:21px}
-svg{max-width:100%;height:auto}label{cursor:pointer}
-@media(min-width:900px){body{padding-bottom:24px}#app{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 18px}#app>h1,#app>.row:first-child,#app>input[type=month],#app>.hero,#app>.card:first-of-type{grid-column:1/-1}#app>.hero{margin-top:4px}#app>.card{margin:9px 0}#nav{padding-left:max(28px,calc((100vw - 1124px)/2));padding-right:max(28px,calc((100vw - 1124px)/2))}}
-@media(max-width:650px){body{padding-bottom:calc(74px + env(safe-area-inset-bottom))}main{padding:16px 14px 24px}.card{padding:16px;border-radius:15px;margin:11px 0}.hero{padding:20px}.row{gap:8px}.row>div:last-child{text-align:right}#nav{position:fixed;top:auto;bottom:0;left:0;right:0;justify-content:space-around;gap:0;padding:7px 4px calc(7px + env(safe-area-inset-bottom));border-top:1px solid var(--line);border-bottom:0;box-shadow:0 -8px 24px rgba(18,32,54,.06);overflow-x:auto}#nav button{flex:1 0 auto;padding:12px 9px;font-size:11px}#nav button:first-child{display:block;margin-right:0;font-size:11px;font-weight:650;color:var(--mute)}.big{font-size:27px}.grid{gap:7px}button{padding:11px 12px}}
-@media(max-width:380px){main{padding:12px 10px}.grid{grid-template-columns:1fr}.hero .big{font-size:28px}#nav button{padding:11px 7px}}
-.welcome{max-width:790px;margin:clamp(24px,8vh,84px) auto;padding:clamp(8px,3vw,28px)}.eyebrow{font-size:11px;letter-spacing:2px;font-weight:800;color:var(--ok);margin-bottom:18px}.welcome h1{font-size:clamp(36px,6vw,62px);line-height:1.06;letter-spacing:-2px;margin:0 0 16px}.welcome h1 span{color:var(--ok)}.lead{font-size:16px;color:var(--mute);max-width:510px;margin:0 0 30px}.country-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.country-card{display:flex;align-items:center;gap:14px;text-align:left;white-space:normal;padding:22px 18px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);min-height:110px}.country-card:hover{background:#f1f5eb;color:var(--ink);transform:translateY(-3px)}.country-card span:nth-child(2){display:flex;flex-direction:column;gap:4px}.country-card b{font-size:15px}.country-card small{font-size:11px;color:var(--mute);font-weight:500}.flag{font-size:29px}.arrow{margin-left:auto;color:var(--ok);font-size:20px}.privacy-note{font-size:12px;color:var(--mute);margin-top:24px}#nav{box-shadow:0 4px 22px rgba(47,66,48,.035)}#nav button.on{border-radius:12px}@media(max-width:600px){.welcome{margin:30px auto;padding:10px 2px}.country-grid{grid-template-columns:1fr}.country-card{min-height:92px;padding:17px}.welcome h1{letter-spacing:-1.3px}}
-
-/* Friendly illustrated / cartoon-inspired visual refresh */
-:root{--bg:#fff8ed;--card:#fffefa;--ink:#293b34;--mute:#7a827b;--ok:#398260;--ok-dark:#28694c;--bad:#cf625c;--line:#eee2d1;--soft:#e9f5df;--shadow:0 10px 0 rgba(68,86,56,.045),0 18px 40px rgba(80,73,46,.07)}
-body{background:radial-gradient(ellipse at 8% 8%,#fff0cf 0,transparent 27%),radial-gradient(ellipse at 95% 40%,#eaf5e1 0,transparent 26%),var(--bg)}
-.card{border:2px solid #efe5d5;border-radius:23px;box-shadow:var(--shadow);transition:transform .22s,box-shadow .22s}.card:hover{transform:translateY(-2px);box-shadow:0 13px 0 rgba(68,86,56,.04),0 22px 42px rgba(80,73,46,.09)}
-button{border-radius:14px;box-shadow:0 3px 0 rgba(30,75,52,.14)}button:hover{transform:translateY(-1px)}
-input,select,textarea{border:2px solid #efe5d5;border-radius:14px;background:#fffdf8}input:focus,select:focus,textarea:focus{box-shadow:0 0 0 4px rgba(57,130,96,.12)}
-.hero{border-radius:27px;background:radial-gradient(circle at 87% 14%,rgba(255,239,180,.4),transparent 25%),linear-gradient(130deg,#2f6c50,#68a16d);box-shadow:0 7px 0 #d6e5c9,0 20px 35px rgba(52,116,91,.16)}
-.welcome{position:relative}.welcome:before{content:'✦';position:absolute;right:7%;top:2%;font-size:48px;color:#efbf66;animation:floaty 3s ease-in-out infinite}.welcome h1 span{color:#398260}.country-card{border:2px solid #eee1ce;box-shadow:0 5px 0 #eee4d4,0 15px 28px rgba(80,73,46,.06);border-radius:23px;transition:transform .2s,box-shadow .2s}.country-card:hover{box-shadow:0 8px 0 #dbe8cf,0 18px 30px rgba(80,73,46,.08)}.flag{filter:drop-shadow(0 3px 0 rgba(50,50,50,.08))}
-.login-shell{max-width:980px;min-height:570px;margin:clamp(18px,6vh,64px) auto;display:grid;grid-template-columns: .95fr 1.05fr;background:#fffefa;border:2px solid #efe5d5;border-radius:32px;overflow:hidden;box-shadow:0 8px 0 #eee3d2,0 24px 60px rgba(80,73,46,.1);animation:rise .55s ease both}.login-art{position:relative;min-height:570px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:linear-gradient(150deg,#dff0d5,#f8e8b9 70%,#f7d9b9)}.login-art:before,.login-art:after{content:'';position:absolute;border-radius:50%;background:rgba(255,255,255,.35)}.login-art:before{width:300px;height:300px;top:-90px;left:-80px}.login-art:after{width:240px;height:240px;right:-65px;bottom:65px}.money-mascot{position:relative;z-index:2;width:210px;height:245px;animation:bob 3.4s ease-in-out infinite}.mascot-face{position:absolute;z-index:2;top:54px;left:27px;width:156px;height:125px;border:4px solid #3e7855;border-radius:48% 48% 44% 44%;background:#fff3cf;box-shadow:inset 0 -8px 0 #f4dba0}.eye{position:absolute;top:45px;width:10px;height:15px;border-radius:50%;background:#354c3d}.eye:nth-child(1){left:43px}.eye:nth-child(2){right:43px}.cheek{position:absolute;top:68px;width:21px;height:11px;border-radius:50%;background:#f2a49a;opacity:.85}.cheek.left{left:18px}.cheek.right{right:18px}.smile{position:absolute;left:67px;top:65px;width:22px;height:13px;border-bottom:3px solid #354c3d;border-radius:0 0 50% 50%}.mascot-body{position:absolute;top:154px;left:38px;width:134px;height:80px;border:4px solid #3e7855;border-radius:27px 27px 36px 36px;background:#75b87d;color:#fff8d9;font-size:38px;font-weight:900;text-align:center;padding-top:10px;box-shadow:inset 0 -8px 0 rgba(35,94,58,.12)}.mascot-body span{font-size:15px;vertical-align:top;color:#fff1bc}.mascot-leaf{position:absolute;z-index:3;top:13px;left:83px;font-size:43px;transform:rotate(-17deg)}.floating-coin{position:absolute;z-index:3;display:grid;place-items:center;width:52px;height:52px;border:3px solid #b88735;border-radius:50%;background:#ffd879;color:#855a1d;font-weight:900;font-size:23px;box-shadow:0 5px 0 #d6ad57;animation:floaty 3s ease-in-out infinite}.coin-one{left:16%;top:27%}.coin-two{right:15%;top:43%;animation-delay:-1.4s;background:#fff0c0}.art-spark{position:absolute;z-index:2;color:#fffefa;font-size:38px}.spark-one{top:18%;right:22%}.spark-two{bottom:26%;left:18%;color:#d69c37}.art-caption{position:absolute;z-index:2;bottom:28px;left:25px;right:25px;display:flex;flex-direction:column;text-align:center;gap:4px;color:#355d43}.art-caption b{font-size:19px}.art-caption span{font-size:12px}.login-panel{padding:clamp(28px,5vw,58px);display:flex;flex-direction:column;justify-content:center}.brand-mark{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:900;margin-bottom:36px}.brand-mark:first-letter{font-size:25px}.login-panel .eyebrow{margin-bottom:12px;letter-spacing:1.5px}.login-panel h1{font-size:clamp(34px,4vw,48px);line-height:1.08;letter-spacing:-1.7px;margin:0 0 14px}.login-panel h1 span{color:#398260}.login-panel .lead{font-size:14px;margin-bottom:22px}.login-form{display:flex;flex-direction:column}.login-form label{font-size:12px;font-weight:800;margin:5px 0 1px}.login-form input{padding:14px 15px;margin-bottom:12px}.login-button{display:flex;justify-content:center;align-items:center;gap:12px;margin-top:5px;padding:14px 18px;border-radius:15px;font-size:14px}.login-button span{font-size:20px;line-height:12px}.login-error{margin-top:10px}.login-foot{margin-top:25px;text-align:center;color:#7a827b;font-size:11px}
-@keyframes bob{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-10px) rotate(1deg)}}@keyframes floaty{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-9px) rotate(5deg)}}
-@media(max-width:700px){.login-shell{grid-template-columns:1fr;max-width:430px;margin:18px auto;border-radius:27px}.login-art{min-height:250px;max-height:270px}.money-mascot{transform:scale(.68);transform-origin:center center;margin:-24px 0}.art-caption{bottom:13px}.art-caption b{font-size:15px}.art-caption span{font-size:10px}.coin-one{left:14%;top:18%}.coin-two{right:14%;top:24%}.login-panel{padding:25px 24px 28px}.brand-mark{margin-bottom:24px}.login-panel h1{font-size:38px}.welcome:before{right:3%;top:-2%;font-size:34px}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
-
-/* Alignment polish: consistent page width, balanced login form, and clear country actions */
-#app{width:100%;min-width:0}
-main{width:100%;max-width:1240px;margin-inline:auto}
-.login-shell{width:min(100%,1000px);min-height:0;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);margin:clamp(20px,5vh,54px) auto;border-radius:30px;align-items:stretch}
-.login-art{min-height:590px}
-.login-panel{min-width:0;padding:clamp(28px,4vw,52px);justify-content:center}
-.login-panel h1{max-width:440px}
-.login-form{width:100%;max-width:410px}
-.login-form input{width:100%;min-height:50px}
-.login-button{width:100%;min-height:50px}
-.login-foot{max-width:410px;width:100%}
-.welcome{width:100%;max-width:850px;margin:clamp(28px,7vh,76px) auto;padding:clamp(18px,3vw,32px)}
-.welcome h1{max-width:760px}
-.country-grid{align-items:stretch;gap:18px;margin-top:28px}
-.country-card{width:100%;min-width:0;min-height:126px;padding:22px;cursor:pointer;position:relative;isolation:isolate;outline-offset:4px}
-.country-card:focus-visible{outline:3px solid #398260}
-.country-card:active{transform:translateY(1px);box-shadow:0 3px 0 #eee4d4}
-.country-card span:nth-child(2){flex:1;min-width:0}
-.country-card small{line-height:1.5}
-.arrow{flex:0 0 auto}
-.loading-panel,.load-error{max-width:650px;margin:clamp(48px,12vh,110px) auto;padding:clamp(28px,5vw,54px);text-align:center;background:var(--card);border:2px solid var(--line);border-radius:30px;box-shadow:var(--shadow)}
-.loading-mascot,.error-emoji{font-size:54px;line-height:1.2;margin-bottom:18px;animation:bob 2.6s ease-in-out infinite}
-.loading-panel h1,.load-error h1{font-size:clamp(25px,4vw,36px);margin:0 0 10px}
-.loading-panel p,.load-error p{color:var(--mute);margin:0 auto 18px;max-width:430px}
-.loading-track{height:9px;max-width:260px;margin:22px auto 0;background:#eee5d7;border-radius:99px;overflow:hidden}
-.loading-track i{display:block;width:38%;height:100%;border-radius:99px;background:linear-gradient(90deg,#398260,#9ac77e);animation:loading 1.2s ease-in-out infinite alternate}
-@keyframes loading{from{transform:translateX(-15%)}to{transform:translateX(180%)}}
-.error-detail{padding:10px 12px;border-radius:12px;background:#fff4ee;color:#8e4b40;font-size:12px;overflow-wrap:anywhere}
-.error-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-top:20px}
-.secondary-button{background:#f0f4e9;color:#355d43;box-shadow:none;border:1px solid #dce8d2}
-@media(max-width:760px){main{padding:14px 12px 24px}.login-shell{width:100%;max-width:480px;grid-template-columns:minmax(0,1fr);margin:12px auto 24px;border-radius:25px}.login-art{min-height:230px;max-height:250px}.money-mascot{transform:scale(.67);transform-origin:center center;margin:-28px 0}.login-panel{padding:25px clamp(20px,6vw,32px) 30px}.brand-mark{margin-bottom:20px}.login-panel h1{font-size:clamp(32px,9vw,40px)}.login-panel .lead{margin-bottom:18px}.login-foot{margin-top:20px}.welcome{margin:20px auto;padding:16px 6px}.welcome h1{font-size:clamp(34px,9vw,46px);letter-spacing:-1.2px}.lead{font-size:14px}.country-grid{grid-template-columns:minmax(0,1fr);gap:14px;margin-top:22px}.country-card{min-height:96px;padding:17px 16px}.privacy-note{line-height:1.6}}
-@media(min-width:761px) and (max-width:980px){.login-shell{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)}.login-panel{padding:30px}.login-art{min-height:550px}}
-@media(prefers-reduced-motion:reduce){.loading-mascot,.loading-track i{animation:none}}
-
-
-/* v3: borrowed, account-linked payments, smoother updates */
-#app.anim .card,#app.anim .hero{animation:rise .38s ease both}
-.mute.ok{color:var(--ok)}.mute.bad{color:var(--bad)}.warn{color:#b9822a}
-.tag{display:inline-block;font-size:10px;font-weight:800;padding:1px 8px;border-radius:99px;background:var(--soft);color:var(--ok);margin-right:6px;vertical-align:1px}
-body.busy button{opacity:.6;pointer-events:none}
-#toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translate(-50%,12px);max-width:min(92vw,520px);padding:11px 16px;border-radius:14px;background:#293b34;color:#fff;font-size:13px;font-weight:600;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:60}
-#toast.show{opacity:1;transform:translate(-50%,0)}#toast.err{background:#b4463f}
-#pin-overlay{position:fixed;inset:0;z-index:1000;background:rgba(22,37,29,.92);display:grid;place-items:center;padding:20px}#pin-overlay .pin-card{width:min(100%,380px);background:var(--card);border-radius:22px;padding:24px;box-shadow:0 20px 80px #0004}#pin-overlay input{width:100%;margin:12px 0}
-@media(min-width:651px){#toast{bottom:28px}}
-.loan{padding:6px 0 12px;border-bottom:1px solid var(--line)}.loan:last-child{border-bottom:0;padding-bottom:0}
-.paybox .grid,.person .grid{gap:10px}.grid button{white-space:normal}
-.paylink{cursor:pointer;color:var(--ok);font-weight:650;font-size:13px;padding:4px 0}
-.person details{margin-top:8px}
-@media print{body{background:#fff;padding:0}#nav,button,.welcome:before{display:none!important}main{max-width:none;padding:0}.card{box-shadow:none;break-inside:avoid;border:1px solid #ddd}.hero{background:#eee!important;color:#111!important;print-color-adjust:exact}.hero .mute{color:#333}}
-
-/* PocketPlan Studio: polished, realistic dark-finance interface */
-:root{color-scheme:dark;--bg:#080d18;--card:#111a2a;--ink:#edf3ff;--mute:#91a0b9;--ok:#42d6c4;--ok-dark:#20b9a8;--bad:#ff7185;--line:#253249;--soft:#142e3c;--shadow:0 18px 46px rgba(0,0,0,.24)}
-html,body{background:#080d18!important;color:var(--ink)}body{background:radial-gradient(ellipse at 10% -8%,rgba(25,93,144,.23),transparent 34%),radial-gradient(ellipse at 100% 24%,rgba(18,122,135,.12),transparent 30%),#080d18!important;font-family:Inter,Manrope,system-ui,sans-serif;letter-spacing:.005em}
-main{max-width:1240px;padding:30px clamp(15px,3vw,34px) 42px}
-h1{font-size:clamp(24px,3vw,32px);letter-spacing:-.9px;color:#f4f7ff}h2{font-size:16px;color:#edf3ff;letter-spacing:-.25px}
-.card{background:linear-gradient(145deg,rgba(19,29,47,.98),rgba(14,23,38,.98));border:1px solid #25334b;border-radius:20px;padding:22px;box-shadow:0 12px 34px rgba(0,0,0,.17);transition:border-color .18s,transform .18s,box-shadow .18s}
-.card:hover{transform:translateY(-1px);border-color:#354965;box-shadow:0 16px 40px rgba(0,0,0,.23)}
-.hero{background:radial-gradient(circle at 90% 4%,rgba(66,214,196,.18),transparent 30%),linear-gradient(120deg,#0d2440,#103b53 55%,#126b73);border:1px solid rgba(99,211,211,.22);border-radius:23px;box-shadow:0 20px 50px rgba(0,0,0,.22);padding:clamp(22px,3vw,32px)}
-.hero .big{font-size:clamp(34px,4vw,46px);color:#f7fbff!important;letter-spacing:-1.5px}.hero .mute{color:#a9c7dc}.hero .row{border-color:rgba(192,223,241,.14)}
-input,select,textarea{background:#0b1423!important;color:#edf3ff!important;border:1px solid #2b3a53!important;border-radius:12px!important;box-shadow:none!important;padding:12px 14px}input:focus,select:focus,textarea:focus{border-color:#42d6c4!important;box-shadow:0 0 0 3px rgba(66,214,196,.12)!important}input::placeholder,textarea::placeholder{color:#7587a3}select option{background:#111a2a;color:#edf3ff}select optgroup{background:#111a2a;color:#42d6c4}
-button{background:linear-gradient(135deg,#27bcae,#43d5c4);color:#06151b;border-radius:12px;box-shadow:none;font-weight:750;letter-spacing:.005em}button:hover{background:linear-gradient(135deg,#40d8c7,#72e7d9);transform:translateY(-1px)}button.secondary-button{background:#1b2a40;color:#dbe7fb;border:1px solid #31435e}button.ghost{background:transparent;color:#9aabc3;border:1px solid transparent}button.ghost:hover{background:#1a263a;color:#ff9baa}
-#nav{position:sticky;top:0;background:rgba(8,13,24,.9);border-bottom:1px solid #202d42;box-shadow:0 8px 28px rgba(0,0,0,.2);padding-top:11px;padding-bottom:11px;z-index:30}
-#nav button{background:transparent;color:#8d9cb4;border-radius:10px;padding:10px 13px;box-shadow:none;font-size:12px}#nav button.on{background:#153242;color:#56dfce;border:1px solid #235466}#nav button:first-child{color:#edf3ff;font-weight:800}
-.row{border-color:#253249}.mute{color:#91a0b9}.ok{color:#4adbc9}.bad{color:#ff7185}.bar{background:#253249;height:7px}.bar i{background:linear-gradient(90deg,#2cb8ae,#61e2cf)}.pill{background:#0b1423;border-color:#2b3a53}.pill button.on{background:#2fc7b7;color:#07141c}
-.welcome{max-width:880px}.welcome h1 span{color:#43d6c4}.eyebrow{color:#43d6c4}.lead{color:#9eacc2}.country-card{background:linear-gradient(145deg,#121e31,#0f192a);border:1px solid #2b3b55;border-radius:20px;box-shadow:0 16px 38px rgba(0,0,0,.18);color:#edf3ff}.country-card:hover{background:#172840;color:#fff;border-color:#3b5a76}.country-card small{color:#92a3bd}.arrow{color:#43d6c4}.privacy-note{color:#8799b4}.flag{filter:none}
-.login-shell{background:#101a2b;border:1px solid #293a54;border-radius:26px;box-shadow:0 24px 70px #0005}.login-panel{background:#101a2b!important;color:#edf3ff}.login-art{background:radial-gradient(circle at 50% 35%,#1a5971,#102a45 55%,#0c1527)!important}.login-art:before,.login-art:after{background:rgba(66,214,196,.08)}.login-button{background:linear-gradient(135deg,#28bcae,#51decd);color:#06151b}.login-foot{color:#8fa2bd}.brand-mark{color:#f0f5ff}.login-form label{color:#b9c8dc}.login-error{color:#ff7185}
-#toast{background:#15283a;color:#eafcff;border:1px solid #2a5261;box-shadow:0 12px 36px #0005}#toast.err{background:#4b202b;border-color:#783847}#pin-overlay{background:rgba(3,8,17,.94)}#pin-overlay .pin-card{background:#111a2a;border:1px solid #2b3b55;color:#edf3ff}
-.person,.loan{border-color:#253249}.paylink{color:#53ddcc}pre{color:#dce8fa}.tag{background:#183342;color:#63e0d0;border-radius:7px;padding:2px 7px}
-@media(min-width:900px){#app{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px}#app>h1,#app>.row:first-child,#app>input[type=month],#app>.hero,#app>.card:first-of-type{grid-column:1/-1}#app>.card{margin:0 0 8px}}
-@media(max-width:650px){main{padding:18px 13px 28px}.card{padding:17px;border-radius:17px;margin:10px 0}.hero{padding:21px}.row{gap:8px}#nav{background:rgba(8,13,24,.96);border-top:1px solid #26354c;box-shadow:0 -10px 30px #0005;padding:7px 4px calc(7px + env(safe-area-inset-bottom))}#nav button{padding:10px 9px;font-size:10px}#nav button.on{background:#163343}button{padding:11px 13px}.grid{gap:8px}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
-
-
-.ai-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:8px 4px 18px;grid-column:1/-1}.ai-heading .eyebrow{margin-bottom:8px}.ai-heading h1{margin:0 0 7px}.ai-orb{width:76px;height:76px;flex:0 0 76px;border-radius:50%;display:grid;place-items:center;font-size:32px;color:#eaffff;background:radial-gradient(circle at 32% 25%,#9cf8ff,#248ee9 35%,#252f84 70%,#11172f);box-shadow:0 0 34px rgba(45,174,255,.28),inset 0 0 20px #ffffff30;border:1px solid #5bbde8}.ai-welcome{grid-column:1/-1;background:radial-gradient(ellipse at 100% 0,rgba(28,128,179,.14),transparent 42%),linear-gradient(145deg,#111e32,#0e1728)}.ai-kicker{font-size:10px;letter-spacing:1.7px;font-weight:800;color:#58ddce;margin-bottom:8px}.ai-welcome h2{font-size:23px;letter-spacing:-.5px;margin-bottom:5px}.ai-prompts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0 22px}.ai-prompt{display:grid;grid-template-columns:34px 1fr;grid-template-rows:auto auto;column-gap:10px;align-items:center;text-align:left;white-space:normal;background:#111e30!important;color:#eaf2ff!important;border:1px solid #2b3d57!important;border-radius:13px;padding:13px!important;box-shadow:none!important}.ai-prompt:hover{background:#172b42!important;border-color:#3b6a7c!important}.ai-prompt span{grid-row:1/3;display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:#153b4a;color:#57dfce;font-size:20px}.ai-prompt b{font-size:12px}.ai-prompt small{font-size:10px;color:#8fa2bc;font-weight:500;margin-top:2px}.ai-send-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px}.ai-send-row button{min-width:130px}.ai-answer{grid-column:1/-1;min-height:150px}.ai-answer-head{display:flex;align-items:center;gap:10px;border-bottom:1px solid #26364e;padding-bottom:13px;margin-bottom:12px}.ai-answer-icon{display:grid;place-items:center;width:35px;height:35px;border-radius:11px;background:#163847;color:#58dfcf;font-size:20px}.ai-answer pre{line-height:1.8;color:#dce8f8}.ai-welcome label{display:block;margin:6px 0}
-@media(max-width:650px){.ai-heading{padding:5px 2px 12px}.ai-orb{width:58px;height:58px;flex-basis:58px;font-size:25px}.ai-prompts{gap:8px}.ai-prompt{padding:10px!important;grid-template-columns:28px 1fr;column-gap:7px}.ai-prompt span{width:27px;height:27px}.ai-prompt b{font-size:11px}.ai-prompt small{font-size:9px}.ai-send-row{align-items:flex-start;flex-direction:column}.ai-send-row button{width:100%}}
-
-
-/* POCKETPLAN — premium product design system */
+/* PocketPlan — one design system (mobile-first). Ink indigo + marigold accent. */
 :root{
- --bg:#f4f7fb;--card:#ffffff;--ink:#172438;--mute:#718096;--ok:#087f8c;--ok-dark:#066571;
- --bad:#d94b64;--line:#e4eaf2;--soft:#e5f7f5;--shadow:0 8px 28px rgba(26,44,74,.055);
- --accent:#18b6a4;--navy:#0b1728;
+  color-scheme:light dark;
+  --bg:#f1f3f8;--surface:#fff;--surface-2:#f5f6fb;--ink:#151a33;--text:#2b3152;--mute:#6a7088;
+  --line:#e3e6ef;--ok:#12855a;--bad:#d03f39;--warn:#a8710f;--accent:#f5a524;
+  --soft:#e6f4ee;--soft-bad:#fceceb;
+  --btn:#151a33;--btn-ink:#fff;--btn-hover:#252c5a;
+  --hero-a:#151a33;--hero-b:#262e66;
+  --sans:'Figtree',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --display:'Bricolage Grotesque','Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --nav-h:66px;--safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px);
 }
-html{background:var(--bg)}
-body{font-family:Inter,Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(ellipse at 10% -10%,rgba(39,174,164,.09),transparent 32%),var(--bg);color:var(--ink);letter-spacing:-.01em}
-main{max-width:1320px;padding:30px clamp(16px,3vw,40px) 44px}
-h1{font-size:clamp(25px,2.3vw,34px);letter-spacing:-1.1px;font-weight:800}
-h2{font-size:16px;letter-spacing:-.35px;font-weight:800}
-#app{align-items:start}
-.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:23px;margin:12px 0;box-shadow:var(--shadow);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
-.card:hover{transform:translateY(-1px);border-color:#d5e1ec;box-shadow:0 14px 34px rgba(26,44,74,.075)}
-.hero{background:linear-gradient(115deg,#10243b 0%,#124b60 56%,#087f8c 100%);border:1px solid rgba(255,255,255,.1);border-radius:24px;box-shadow:0 18px 40px rgba(9,84,101,.15);padding:clamp(24px,3vw,36px)}
-.hero:after{content:"";position:absolute;width:240px;height:240px;right:-90px;top:-100px;border-radius:50%;border:1px solid #ffffff1f;box-shadow:0 0 0 28px #ffffff08,0 0 0 58px #ffffff06;pointer-events:none}
-.hero .big{font-size:clamp(34px,4vw,48px);letter-spacing:-1.8px;font-variant-numeric:tabular-nums}
-.hero .row{border-color:#ffffff1c}
-input,select,textarea{background:#f8fafd!important;color:#172438!important;border:1px solid #dce5ef!important;border-radius:12px!important;padding:12px 14px!important;transition:border .18s,box-shadow .18s}
-input:focus,select:focus,textarea:focus{border-color:#19a99d!important;box-shadow:0 0 0 4px #18b6a41c!important}
-input::placeholder,textarea::placeholder{color:#9aa8ba}
-button{background:linear-gradient(135deg,#0b8e96,#16b6a5);color:#fff;border-radius:12px;padding:11px 16px;box-shadow:0 4px 10px #0b8e961a;font-weight:750;letter-spacing:0;transition:transform .16s,filter .16s,box-shadow .16s}
-button:hover{background:linear-gradient(135deg,#087f8c,#0ea99a);filter:saturate(1.06);transform:translateY(-1px);box-shadow:0 7px 16px #0b8e9628}
-button:disabled{opacity:.55;cursor:wait;transform:none}
-button.secondary-button{background:#eef3f8;color:#31445d;border:1px solid #dfe7f0;box-shadow:none}
-button.secondary-button:hover{background:#e4edf5}
-button.ghost{background:transparent;color:#7b8ba1;box-shadow:none;border:1px solid transparent}
-button.ghost:hover{background:#fff0f2;color:#c63e58}
-#nav{position:sticky;top:0;z-index:40;gap:5px;padding:10px max(20px,calc((100vw - 1240px)/2));background:rgba(255,255,255,.88);border-bottom:1px solid #e2e9f2;box-shadow:0 7px 22px #182f4b0a;backdrop-filter:blur(18px)}
-#nav button{font-size:12px;padding:10px 12px;color:#73839a;border:1px solid transparent;border-radius:11px}
-#nav button.on{color:#087f8c;background:#e7f7f5;border-color:#c8eeea;box-shadow:none}
-#nav button:first-child{color:#172438;font-size:14px;font-weight:850}
-.row{border-color:#e9eef4;padding:12px 0}
-.mute{color:#75849a;font-size:12px}
-.ok{color:#078b7f}.bad{color:#d94b64}
-.bar{height:8px;background:#edf1f6;border-radius:99px}.bar i{background:linear-gradient(90deg,#12a89d,#56d6bb);border-radius:99px}
-.pill{background:#f5f8fb;border-color:#e1e8f0}.pill button.on{background:#087f8c;color:white}
-.welcome{max-width:1000px;margin:clamp(32px,8vh,90px) auto;padding:clamp(12px,3vw,36px)}
-.welcome:before{content:none}
-.welcome .eyebrow,.eyebrow{color:#078b8b;letter-spacing:1.7px}
-.welcome h1{font-size:clamp(40px,6vw,68px);line-height:1.04;letter-spacing:-2.5px}
-.welcome h1 span{background:linear-gradient(100deg,#087f8c,#18b6a4);background-clip:text;-webkit-background-clip:text;color:transparent}
-.lead{color:#73839a;line-height:1.8}
-.country-grid{gap:18px;margin-top:28px}
-.country-card{min-height:130px;padding:25px;background:linear-gradient(145deg,#fff,#f9fcff);border:1px solid #dfe8f1;border-radius:20px;box-shadow:0 12px 28px #1838580a;color:#172438;position:relative;overflow:hidden}
-.country-card:after{content:"";position:absolute;inset:auto -30px -60px auto;width:150px;height:150px;border-radius:50%;background:#e8f7f5;z-index:0}
-.country-card>*{position:relative;z-index:1}
-.country-card:hover{background:#fff;color:#172438;border-color:#a9e3dc;box-shadow:0 18px 36px #18385812;transform:translateY(-3px)}
-.country-card b{font-size:17px}.country-card small{font-size:12px;color:#74849a}.flag{font-size:32px}.arrow{color:#078b8b;font-size:24px}
-.privacy-note{color:#7e8ca0}
-.login-shell{max-width:1080px;min-height:600px;grid-template-columns:1fr 1fr;border:1px solid #e1e8f1;border-radius:26px;box-shadow:0 24px 70px #172b4612;background:#fff}
-.login-art{background:radial-gradient(circle at 70% 20%,#d5f6ef,transparent 34%),linear-gradient(145deg,#e8f3ff,#f5fbff 52%,#d9f4f0);min-height:600px}
-.login-art:before,.login-art:after{background:#ffffff70}
-.money-mascot{transform:scale(.92)}
-.login-panel{padding:clamp(28px,4vw,56px);background:#fff!important;color:#172438}
-.login-panel h1{font-size:clamp(32px,3.5vw,44px);letter-spacing:-1.8px}
-.brand-mark{color:#172438;font-size:20px}.login-button{width:100%;margin-top:10px}
-#toast{background:#14263b;color:#fff;border:1px solid #263e58;border-radius:12px;box-shadow:0 12px 32px #0a172933}
-.ai-heading{padding:10px 4px 18px}
-.ai-orb{background:radial-gradient(circle at 30% 25%,#a3fff0,#20b7ad 38%,#087f8c 72%,#0d2943);box-shadow:0 0 0 8px #18b6a411,0 12px 28px #0a87932a;border:1px solid #9de9df}
-.ai-welcome{background:radial-gradient(ellipse at 100% 0,#1a8a941c,transparent 42%),linear-gradient(145deg,#fff,#f8fbff);border-color:#dfe9f1}
-.ai-kicker{color:#078b8b}
-.ai-welcome h2{font-size:24px}
-.ai-prompt{background:#fff!important;color:#21354b!important;border:1px solid #dfe8f1!important;box-shadow:0 5px 16px #18385808!important;border-radius:14px}
-.ai-prompt:hover{background:#f5fbfb!important;border-color:#9bdfd7!important}
-.ai-prompt span{background:#e5f7f4;color:#078b8b;border-radius:10px}
-.ai-prompt small{color:#75849a}
-.ai-answer-head{border-color:#e5ecf3}
-.ai-answer-icon{background:#e4f7f4;color:#078b8b}
-.ai-answer pre{color:#273950;line-height:1.85}
-.tag{background:#e7f7f5;color:#087f8c}
-@keyframes premiumIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-#app.anim>*{animation:premiumIn .28s ease both}
-#app.anim>*:nth-child(2){animation-delay:.025s}#app.anim>*:nth-child(3){animation-delay:.05s}#app.anim>*:nth-child(4){animation-delay:.075s}
-#nav button{display:inline-flex;align-items:center;gap:7px}#nav button svg{width:15px;height:15px;stroke-width:1.9;flex:0 0 auto}#nav button.on svg{stroke-width:2.2}
-@media(min-width:900px){#app{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 22px}#app>.card{margin:0 0 10px}}
-@media(max-width:650px){
- main{padding:18px 13px 30px}.card{padding:18px;border-radius:17px;margin:10px 0}
- #nav{background:rgba(255,255,255,.96);border-top:1px solid #e2e9f2;box-shadow:0 -8px 24px #182f4b0c}
- #nav button{font-size:10px;padding:10px 8px}
- .country-grid{grid-template-columns:1fr}.country-card{min-height:100px;padding:20px}
- .welcome h1{font-size:clamp(39px,11vw,55px);letter-spacing:-1.8px}
- .login-shell{grid-template-columns:1fr;min-height:0;margin:16px auto}.login-art{display:none}.login-panel{padding:28px 22px}
- .ai-prompts{grid-template-columns:1fr}.ai-prompt{grid-template-columns:34px 1fr;min-height:64px}
- .ai-heading{gap:12px}.ai-orb{width:56px;height:56px;flex-basis:56px;font-size:24px}
- .hero{padding:22px}.hero .big{font-size:34px}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#0d1020;--surface:#161a30;--surface-2:#1d2242;--ink:#f0f2fb;--text:#d3d8ee;--mute:#9aa1bd;
+  --line:#293055;--ok:#3dd598;--bad:#ff7d75;--warn:#f5b94a;
+  --soft:#12312b;--soft-bad:#3a1d27;
+  --btn:#f5a524;--btn-ink:#1b1405;--btn-hover:#ffb83f;
+  --hero-a:#1c2352;--hero-b:#2c3680;
+}}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html{background:var(--bg);-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;font:15px/1.5 var(--sans);color:var(--text);background:var(--bg);
+  -webkit-font-smoothing:antialiased;padding:var(--safe-t) 0 calc(var(--nav-h) + var(--safe-b) + 24px)}
+body:not(:has(#nav:not([hidden]))){padding-bottom:24px}
+main{width:100%;max-width:820px;margin:0 auto;padding:20px 16px 8px}
+#app{min-width:0}
+
+/* type */
+h1{font:700 26px/1.15 var(--display);letter-spacing:-.025em;color:var(--ink);margin:0}
+h2{font:650 17px/1.3 var(--sans);letter-spacing:-.01em;color:var(--ink);margin:0 0 12px}
+h3{font-size:15px;margin:0 0 8px;color:var(--ink)}
+p{margin:0 0 10px}
+b,strong{font-weight:650;color:var(--ink)}
+.mute{font-size:12.5px;color:var(--mute)}
+p.mute{font-size:13.5px;line-height:1.55}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.mute.ok{color:var(--ok)}.mute.bad{color:var(--bad)}
+.big{font:700 26px/1.2 var(--display);letter-spacing:-.02em;color:var(--ink);font-variant-numeric:tabular-nums}
+.big.ok{color:var(--ok)}.big.bad{color:var(--bad)}.big.mute{color:var(--mute)}
+a{color:var(--ok);font-weight:600}
+ul{padding-left:20px;margin:0 0 12px;line-height:1.6}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;margin:0}
+svg{max-width:100%;height:auto}
+.eyebrow,.section-kicker,.ai-kicker,.loading-brand{display:none}
+
+/* page header: first row of a page (title + action) */
+#app>.row:first-child{border:0;padding:4px 0 14px;gap:12px}
+#app>h1{margin:2px 0 14px}
+#app>h1+p.mute{margin:-6px 0 14px}
+#app>input[type=month]{width:auto;min-width:180px;margin:0 0 6px}
+
+/* cards & rows */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;margin:12px 0;min-width:0}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);min-width:0}
+.row:last-child{border-bottom:0}
+.row>div{min-width:0}
+.row>div:first-child{overflow-wrap:anywhere}
+.row>div:last-child{text-align:right;flex:0 0 auto;max-width:62%}
+.row>div:last-child:has(button.secondary-button){display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:6px}
+.row>div:last-child:has(button.secondary-button)>b{flex:1 0 100%}
+.row>span:last-child{text-align:right;white-space:nowrap;flex:0 0 auto}
+.row>span:first-child{min-width:0;overflow-wrap:anywhere}
+.amt{white-space:nowrap}
+.row b{white-space:nowrap}
+.loan{padding:4px 0 12px;border-bottom:1px solid var(--line)}
+.loan:last-child{border-bottom:0;padding-bottom:0}
+.tag{display:inline-block;font-size:11px;font-weight:650;padding:2px 8px;border-radius:99px;background:var(--soft);color:var(--ok);margin-right:6px;vertical-align:1px}
+.bar{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;margin:6px 0 12px;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:var(--ok);border-radius:99px;transition:width .3s}
+.bar i.over{background:var(--bad)}
+
+/* forms */
+label{cursor:pointer}
+label.mute{display:block;margin:8px 0 0;font-weight:550}
+label:has(>input[type=checkbox]){display:flex;align-items:center;gap:10px;min-height:44px}
+input,select,textarea{display:block;width:100%;min-width:0;min-height:48px;margin:5px 0 10px;padding:12px 14px;font:16px/1.3 var(--sans);
+  color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:12px;outline:0;
+  transition:border-color .15s,box-shadow .15s}
+textarea{min-height:92px;resize:vertical;line-height:1.5}
+select{padding-right:38px;text-overflow:ellipsis;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238a90a8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center}
+select option,select optgroup{background:var(--surface);color:var(--ink)}
+input[type=date],input[type=month]{min-height:48px}
+input:not([type=checkbox]),select,textarea{appearance:none;-webkit-appearance:none}
+input[type=checkbox]{width:22px!important;min-height:22px;height:22px;margin:0;padding:0;accent-color:var(--ok);flex:0 0 auto;display:inline-block;border:0;box-shadow:none}
+input[type=file]{padding:10px 12px;min-height:48px;font-size:14px}
+input::placeholder,textarea::placeholder{color:var(--mute);opacity:.75}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent)}
+
+/* buttons */
+button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 18px;border:0;border-radius:12px;
+  background:var(--btn);color:var(--btn-ink);font:650 14px/1.15 var(--sans);cursor:pointer;white-space:nowrap;
+  transition:background .15s,transform .1s}
+button:hover{background:var(--btn-hover)}
+button:active{transform:scale(.98)}
+button:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.55;cursor:wait}
+body.busy button{opacity:.6;pointer-events:none}
+button.secondary-button{background:var(--surface-2);color:var(--ink);border:1px solid var(--line)}
+button.secondary-button:hover{background:var(--line)}
+button.ghost{background:transparent;color:var(--mute);min-height:40px;min-width:40px;padding:0 10px;font-weight:600}
+button.ghost:hover{background:var(--soft-bad);color:var(--bad)}
+.grid button,.card>button{white-space:normal}
+.card>button:not(.ghost),.card>.grid>button{width:100%}
+.card>button+button{margin-top:8px}
+.paylink{display:flex;align-items:center;min-height:44px;color:var(--ok);font-weight:650;cursor:pointer}
+details{margin-top:4px}
+details>summary{list-style:none}details>summary::-webkit-details-marker{display:none}
+details>summary::after{content:'›';display:inline-block;margin-left:8px;transition:transform .2s}
+details[open]>summary::after{transform:rotate(90deg)}
+
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:10px;row-gap:0}
+.grid>.card{margin:0}
+.grid:has(>.card){gap:10px;margin:12px 0}
+.paybox>button,.person>button{width:100%}
+#app>button.ghost{display:flex;width:fit-content;margin:6px auto 0}
+.grid:has(>input+select.cur){grid-template-columns:minmax(0,1fr) 104px}
+.grid:has(>button.g-auto){grid-template-columns:minmax(0,1fr) auto}
+.grid:has(>button.g-auto)>button{margin:5px 0 10px;min-height:48px}
+.grid>button{margin-top:4px}
+
+/* nav — mobile: bottom tab bar */
+#nav{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;align-items:stretch;gap:2px;
+  background:var(--surface);border-top:1px solid var(--line);padding:6px 6px calc(6px + var(--safe-b))}
+#nav button{position:relative;flex:1 1 0;min-width:0;flex-direction:column;gap:3px;min-height:52px;padding:6px 2px;
+  background:none;color:var(--mute);font-size:11px;font-weight:600;border-radius:12px}
+#nav button:hover{background:none;color:var(--ink)}
+#nav button span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#nav button svg{width:22px;height:22px;stroke-width:1.8}
+#nav button.on{color:var(--ink)}
+#nav button.on svg{stroke-width:2.2}
+#nav button.on::before{content:'';position:absolute;top:-7px;left:50%;width:26px;height:3px;margin-left:-13px;border-radius:0 0 3px 3px;background:var(--accent)}
+#nav>button.sec{display:none}
+#nav button .lg{display:none}
+#nav .sheet button .lg{display:inline}
+#nav .sheet button .sh{display:none}
+#nav .brand{display:none}
+.sheet{position:absolute;left:10px;right:10px;bottom:calc(100% + 10px);display:grid;grid-template-columns:1fr;gap:4px;padding:8px;
+  background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:0 24px 60px rgba(8,10,30,.35)}
+#nav .sheet button{flex:0 0 auto;flex-direction:row;justify-content:flex-start;gap:12px;min-height:54px;padding:0 14px;font-size:14px;color:var(--ink);background:var(--surface-2);border-radius:14px}
+#nav .sheet button:hover{background:var(--line)}
+#nav .sheet button.on{background:var(--soft);color:var(--ok)}
+#nav .sheet button.on::before{display:none}
+#nav .sheet svg{width:20px;height:20px;flex:0 0 auto}
+#nav .sheet button .lg{text-align:left}
+.scrim{position:fixed;inset:0;z-index:-1;background:rgba(8,10,30,.5)}
+
+.fab{position:fixed;right:16px;bottom:calc(var(--nav-h) + var(--safe-b) + 16px);z-index:40;width:56px;height:56px;min-height:0;padding:0;border-radius:18px;
+  background:var(--accent);color:#1b1405;box-shadow:0 12px 28px rgba(245,165,36,.45)}
+.fab:hover{background:#ffb83f}
+.fab svg{width:26px;height:26px;stroke-width:2.4}
+#nav[hidden]~.fab,body:not([data-tab=home]) .fab{display:none}
+
+#toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + var(--safe-b) + 14px);transform:translate(-50%,10px);max-width:min(92vw,480px);
+  padding:12px 16px;border-radius:14px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;text-align:center;
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:80}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.err{background:var(--bad);color:#fff}
+body:not(:has(#nav:not([hidden]))) #toast{bottom:24px}
+
+/* overview */
+.hero{border-radius:22px;border:0;padding:22px;color:#fff;background:linear-gradient(140deg,var(--hero-a),var(--hero-b));margin:6px 0 12px}
+.hero-kicker{font-size:13px;font-weight:550;color:rgba(255,255,255,.72)}
+.balance-total{font:700 clamp(34px,10vw,46px)/1.1 var(--display);letter-spacing:-.03em;margin:6px 0 4px;color:#fff;font-variant-numeric:tabular-nums}
+.hero-sub{font-size:13px;color:rgba(255,255,255,.66)}
+.flow{margin-top:20px}
+.flow-bar{height:8px;border-radius:99px;background:rgba(255,255,255,.18);overflow:hidden}
+.flow-bar i{display:block;height:100%;border-radius:99px;background:var(--accent)}
+.flow-bar i.over{background:#ff8a80}
+.flow-legend{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;margin-top:9px;font-size:13px;color:rgba(255,255,255,.82)}
+.flow-legend b{color:#fff}
+.metric-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 12px}
+.metric-card{min-width:0;padding:14px;border-radius:16px;background:var(--surface);border:1px solid var(--line)}
+.metric-label{display:flex;align-items:flex-start;gap:7px;font-size:12.5px;line-height:1.3;color:var(--mute);font-weight:550}
+.metric-label svg{width:16px;height:16px;flex:0 0 auto;margin-top:-1px}
+.metric-income svg{color:var(--ok)}.metric-expense svg{color:var(--bad)}.metric-emi svg,.metric-next svg{color:var(--warn)}
+.metric-value{margin-top:10px;font:700 clamp(18px,5.4vw,23px)/1.15 var(--display);letter-spacing:-.02em;color:var(--ink);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.section-heading h2{margin:0!important}
+.section-heading>svg{width:20px;height:20px;color:var(--mute);flex:0 0 auto}
+.empty-state{display:flex;align-items:center;gap:10px;padding:6px 0;color:var(--mute);font-size:14px}
+.empty-state svg{color:var(--ok);flex:0 0 auto}
+.chip{min-height:38px;padding:0 14px;font-size:13px;border-radius:99px;flex:0 0 auto}
+
+/* sign-in / country picker / loading */
+.auth{min-height:calc(100dvh - 90px);display:grid;place-items:center}
+.auth-card{width:min(100%,400px);padding:8px 0}
+.brand-lockup{display:flex;align-items:center;gap:10px;font:700 19px/1 var(--display);letter-spacing:-.02em;color:var(--ink);margin-bottom:34px}
+.brand-mark{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:var(--hero-a);color:var(--accent);font:800 18px/1 var(--display)}
+.auth h1,.welcome h1{font-size:clamp(30px,8.5vw,40px);margin-bottom:10px}
+.lead{font-size:15.5px;line-height:1.55;color:var(--mute);margin:0 0 26px;max-width:430px}
+.login-form label{display:block;font-size:13px;font-weight:600;color:var(--ink)}
+.login-button{width:100%;min-height:50px;margin-top:6px}
+.login-error{min-height:20px;margin-top:10px;font-size:13.5px}
+.welcome{width:100%;max-width:560px;margin:max(4vh,16px) auto 0}
+.country-grid{display:grid;grid-template-columns:1fr;gap:12px}
+.country-card{width:100%;justify-content:flex-start;gap:16px;min-height:88px;padding:18px;text-align:left;white-space:normal;
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:18px}
+.country-card:hover{background:var(--surface);border-color:var(--accent)}
+.country-card span:nth-child(2){display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+.country-card b{font-size:17px}
+.country-card small{font-size:13px;color:var(--mute);font-weight:500}
+.flag{font-size:34px;line-height:1}
+.arrow{color:var(--mute);font-size:26px;line-height:1}
+.privacy-note{font-size:13px;color:var(--mute);margin-top:22px}
+.loading-panel,.load-error{max-width:460px;margin:12vh auto 0;padding:32px 24px;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:22px}
+.loading-panel h1,.load-error h1{font-size:23px;margin:14px 0 8px}
+.loading-panel p,.load-error p{color:var(--mute);margin:0 auto 14px;max-width:360px}
+.loading-spinner{display:block;width:30px;height:30px;margin:0 auto;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-skeleton{display:grid;gap:8px;max-width:260px;margin:20px auto 0}
+.loading-skeleton i{display:block;height:8px;border-radius:99px;background:var(--surface-2)}
+.loading-skeleton i:nth-child(2){width:75%;margin:auto}.loading-skeleton i:nth-child(3){width:50%;margin:auto}
+.error-emoji{font-size:40px;line-height:1}
+.error-detail{padding:10px 12px;border-radius:12px;background:var(--soft-bad);color:var(--bad);font-size:12.5px;overflow-wrap:anywhere}
+.error-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-top:18px}
+#pin-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(8,10,30,.94)}
+#pin-overlay .pin-card{width:min(100%,380px);padding:24px;background:var(--surface);border-radius:22px;color:var(--text)}
+
+/* AI coach */
+.ai-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:4px 0 14px}
+.ai-heading h1{margin-bottom:6px}
+.ai-heading .mute{margin:0}
+.ai-orb{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:16px;background:var(--hero-a);color:var(--accent);font-size:22px}
+.ai-welcome h2{font-size:20px}
+.ai-prompts{display:grid;grid-template-columns:1fr;gap:8px;margin:14px 0 18px}
+.ai-prompt{display:grid;grid-template-columns:36px 1fr;grid-template-rows:auto auto;column-gap:12px;align-items:center;text-align:left;white-space:normal;
+  min-height:62px;padding:10px 14px;background:var(--surface-2);color:var(--ink);border:1px solid var(--line);border-radius:14px}
+.ai-prompt:hover{background:var(--surface-2);border-color:var(--accent)}
+.ai-prompt span{grid-row:1/3;display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:var(--soft);color:var(--ok);font-size:16px}
+.ai-prompt b{font-size:14px;align-self:end}
+.ai-prompt small{font-size:12.5px;color:var(--mute);font-weight:500;align-self:start}
+.ai-send-row{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.ai-send-row .mute{order:2;text-align:center}
+.ai-answer-head{display:flex;align-items:center;gap:12px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid var(--line)}
+.ai-answer-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:var(--soft);color:var(--ok)}
+.ai-answer pre{line-height:1.75;color:var(--text)}
+.ai-thinking{display:inline-flex;gap:5px;align-items:center;margin:10px 10px 10px 0}
+.ai-thinking i{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse .75s ease-in-out infinite alternate}
+.ai-thinking i:nth-child(2){animation-delay:.18s}.ai-thinking i:nth-child(3){animation-delay:.36s}
+.ai-thinking-label{color:var(--mute);font-size:13.5px}
+@keyframes pulse{to{opacity:.25;transform:translateY(-3px)}}
+
+/* small phones */
+@media(max-width:400px){
+  main{padding:16px 12px 8px}
+  .card{padding:16px;border-radius:16px}
+  .grid:has(select:not(.cur)){grid-template-columns:minmax(0,1fr)}
+  #nav button{font-size:10.5px}
 }
-@media(prefers-reduced-motion:reduce){#app.anim>*{animation:none!important}}
+@media(max-width:560px){
+  .grid:has(select:not(.cur)){grid-template-columns:minmax(0,1fr)}
+  .card>button:not(.ghost){min-height:50px}
+}
 
+/* tablet+ */
+@media(min-width:561px){
+  main{padding:28px 24px 12px}
+  .metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .ai-prompts{grid-template-columns:1fr 1fr}
+  .ai-send-row{flex-direction:row;align-items:center;justify-content:space-between}
+  .ai-send-row .mute{order:0;text-align:left}
+  .card>button:not(.ghost),.card>.grid>button{width:auto;min-width:200px}
+  .grid>button,.grid>.secondary-button{width:100%!important;min-width:0!important}
+  .country-grid{grid-template-columns:1fr 1fr}
+}
 
-/* POCKETPLAN refresh: editorial charcoal + vivid citron, clean finance-product UI */
-:root{--bg:#f5f6f2;--card:#fff;--ink:#17211f;--mute:#727c77;--ok:#466b35;--ok-dark:#35552a;--bad:#d64e57;--line:#e4e8df;--soft:#edf5e6;--accent:#c7f36b;--navy:#18221c;--shadow:0 8px 28px rgba(25,38,27,.045)}
-html,body{background:var(--bg);color:var(--ink)}body{background:linear-gradient(180deg,#f8f9f5 0%,#f2f4ee 100%);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:-.015em}main{max-width:1380px;padding:28px clamp(14px,3vw,42px) 44px}
-#nav{display:flex;flex-wrap:wrap;gap:7px;background:#18221c;color:#fff;border:1px solid #28352a;border-radius:18px;margin:12px auto 0;max-width:1300px;padding:11px 14px;box-shadow:0 12px 28px #18221c14}#nav button{color:#b9c5b8;border-radius:11px;font-size:12px;padding:10px 12px;white-space:nowrap}#nav button:first-child{color:#f5f7ef}#nav button.on{background:#d7f59a;color:#20301c;border-color:#d7f59a}#nav button svg{width:16px;height:16px}
-.card{border-radius:20px;border:1px solid #e3e8df;box-shadow:0 5px 22px rgba(29,44,29,.035);padding:clamp(17px,2vw,24px);transition:box-shadow .2s,border-color .2s}.card:hover{box-shadow:0 12px 30px rgba(29,44,29,.07);border-color:#d4dfcc}.hero.balance-hero{position:relative;overflow:hidden;background:#202b23;border:1px solid #344437;padding:clamp(23px,3vw,34px);color:#fff;box-shadow:0 16px 34px #1e2b2017}.balance-hero:after{content:'';position:absolute;width:270px;height:270px;right:-80px;top:-155px;border-radius:50%;background:#d7f59a;opacity:.12;box-shadow:0 0 0 36px #d7f59a0a,0 0 0 72px #d7f59a08;pointer-events:none}.balance-top{display:flex;justify-content:space-between;align-items:center;gap:18px;position:relative;z-index:1}.hero-kicker{font-size:11px;font-weight:800;letter-spacing:1.6px;color:#c5d2c3}.balance-total{font-size:clamp(34px,5vw,52px);font-weight:800;letter-spacing:-2px;line-height:1.2;margin:12px 0}.hero-sub{font-size:12px;color:#b8c6b7}.live-dot{display:inline-block;width:7px;height:7px;background:#c7f36b;border-radius:50%;margin-left:7px}.balance-mark{width:58px;height:58px;display:grid;place-items:center;border-radius:18px;background:#d7f59a;color:#24351f;flex-shrink:0}.balance-mark svg{width:27px;height:27px}
-.metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0 18px}.metric-card{min-width:0;padding:19px;border-radius:17px;background:#fff;border:1px solid #e4e8df;box-shadow:0 4px 16px #263b2206}.metric-label{display:flex;align-items:center;gap:8px;color:#737d73;font-size:12px;font-weight:650;line-height:1.4}.metric-label svg{width:16px;height:16px;flex-shrink:0;color:#607c4a}.metric-value{font-size:clamp(18px,2.2vw,25px);font-weight:800;letter-spacing:-.7px;margin-top:13px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}.metric-income{border-top:3px solid #6b9c52}.metric-expense{border-top:3px solid #df6b70}.metric-emi{border-top:3px solid #d5a449}.metric-next{border-top:3px solid #7795d1}.metric-total{border-top:3px solid #8e7cc3}.metric-owed{border-top:3px solid #559b9a}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.section-heading>svg{width:21px;height:21px;color:#708765}.section-kicker{font-size:10px;font-weight:800;letter-spacing:1.5px;color:#829078}.empty-state{display:flex;align-items:center;gap:10px;padding:12px 0;color:#69766a;font-size:13px}.empty-state svg{color:#658c4e;width:19px}
-button{background:#486b37;color:#fff;border-radius:12px;box-shadow:0 3px 9px #29432112}button:hover{background:#38572b;box-shadow:0 6px 16px #2943211a}button.secondary-button{background:#f0f4eb;color:#3d5634;border-color:#e0e8d9}input,select,textarea{background:#fafbf8!important;border-color:#e0e6db!important;border-radius:12px!important}input:focus,select:focus,textarea:focus{border-color:#91b56e!important;box-shadow:0 0 0 4px #8ab36b1d!important}.bar i{background:linear-gradient(90deg,#5e873f,#b8df76)}.tag{background:#edf5e6;color:#456c35}.welcome h1 span{background:linear-gradient(100deg,#4d753a,#93b95b);background-clip:text;-webkit-background-clip:text;color:transparent}.welcome .eyebrow,.eyebrow{color:#688b4c}.country-card:after{background:#edf5e6}.country-card:hover{border-color:#b7d19f}.country-card .arrow{color:#557a3e}
-.loading-panel{border:1px solid #e0e7d9;border-radius:24px;box-shadow:0 16px 44px #1e2b2010;background:#fff}.loading-brand{display:flex;justify-content:center;align-items:center;gap:10px;font-size:11px;font-weight:850;letter-spacing:2px;color:#4d6d3d;margin-bottom:28px}.loading-spinner{width:24px;height:24px;border:3px solid #e4eddc;border-top-color:#628846;border-right-color:#bde28a;border-radius:50%;animation:spin .75s linear infinite}.loading-panel h1{font-size:clamp(24px,4vw,32px);letter-spacing:-.8px}.loading-track{display:none}.loading-skeleton{display:grid;gap:8px;max-width:300px;margin:22px auto 0}.loading-skeleton i{display:block;height:7px;border-radius:20px;background:linear-gradient(90deg,#edf1e9 20%,#dce8d2 45%,#edf1e9 70%);background-size:200% 100%;animation:shimmer 1.15s ease-in-out infinite}.loading-skeleton i:nth-child(2){width:78%;margin:auto}.loading-skeleton i:nth-child(3){width:55%;margin:auto}@keyframes spin{to{transform:rotate(360deg)}}@keyframes shimmer{to{background-position:-200% 0}}
-.ai-welcome{background:linear-gradient(145deg,#fff,#f8faf4);border-color:#e2e8db}.ai-kicker{color:#658847}.ai-orb{background:radial-gradient(circle at 30% 25%,#e5ffb9,#a2cc65 42%,#4e7038 78%);color:#26391f;box-shadow:0 0 0 7px #b4d98c24;border:1px solid #d7edbd}.ai-prompt{border-color:#e2e8dc!important;box-shadow:0 4px 15px #253b1e08!important}.ai-prompt span,.ai-answer-icon{background:#edf5e6;color:#537a3b}.ai-prompt:hover{background:#f7fbf2!important;border-color:#bad49f!important}.ai-answer pre{color:#29372a;white-space:pre-wrap;overflow-wrap:anywhere}
-@media(min-width:900px){#app{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px}#app>.metric-grid{grid-column:1/-1}#app>.hero{grid-column:1/-1}}
-@media(max-width:800px){#nav{margin:8px 10px 0;border-radius:15px;flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;scrollbar-width:none}#nav::-webkit-scrollbar{display:none}#nav button{flex:0 0 auto}main{padding-top:18px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.metric-card{padding:15px}.metric-value{font-size:clamp(17px,4vw,23px)}}
-@media(max-width:480px){main{padding:14px 11px calc(28px + env(safe-area-inset-bottom))}.metric-grid{gap:8px}.metric-card{padding:13px 12px;border-radius:14px}.metric-label{font-size:11px;align-items:flex-start}.metric-value{font-size:18px;letter-spacing:-.5px}.balance-hero{padding:21px!important}.balance-mark{width:44px;height:44px;border-radius:14px}.balance-total{font-size:clamp(29px,8vw,39px)}#nav{position:sticky;top:0;z-index:50;padding:8px;margin:0;border-radius:0 0 15px 15px;gap:4px}#nav button{padding:10px 11px;font-size:11px}.card{margin:9px 0;padding:15px;border-radius:16px}.ai-prompts{grid-template-columns:1fr}.welcome h1{font-size:clamp(36px,11vw,48px)}}
-@media(prefers-reduced-motion:reduce){.loading-spinner,.loading-skeleton i{animation:none}}
-
-.ai-thinking{display:inline-flex;gap:5px;align-items:center;margin:14px 10px 14px 0;vertical-align:middle}.ai-thinking i{width:7px;height:7px;border-radius:50%;background:#6b8d4d;animation:aiPulse .75s ease-in-out infinite alternate}.ai-thinking i:nth-child(2){animation-delay:.18s}.ai-thinking i:nth-child(3){animation-delay:.36s}.ai-thinking-label{color:#6d7a69;font-size:13px}@keyframes aiPulse{to{opacity:.25;transform:translateY(-3px)}}
-</style></head><body><main id="app"></main><nav id="nav" hidden></nav><div id="toast" role="status" aria-live="polite"></div>
+/* desktop: left sidebar */
+@media(min-width:900px){
+  body:has(#nav:not([hidden])){padding:0 0 32px 248px}
+  main{max-width:860px;padding:36px 32px 16px}
+  h1{font-size:30px}
+  #nav{top:0;right:auto;bottom:0;width:248px;flex-direction:column;gap:3px;padding:22px 14px;border-top:0;border-right:1px solid var(--line);overflow-y:auto}
+  #nav .brand{display:flex;align-items:center;gap:10px;margin:0 8px 22px;font:700 19px/1 var(--display);letter-spacing:-.02em;color:var(--ink)}
+  #nav .brand .brand-mark{width:32px;height:32px;font-size:17px}
+  #nav button{flex:0 0 auto;flex-direction:row;justify-content:flex-start;gap:12px;min-height:44px;padding:0 14px;font-size:14px}
+  #nav button:hover{background:var(--surface-2)}
+  #nav button svg{width:19px;height:19px}
+  #nav button.on{background:var(--surface-2)}
+  #nav button.on::before{top:50%;left:0;width:3px;height:20px;margin:-10px 0 0;border-radius:0 3px 3px 0}
+  #nav>button.sec{display:inline-flex}
+  #nav button .lg{display:inline}
+  #nav button .sh{display:none}
+  #nav>.more-btn,.sheet,.scrim,.fab{display:none!important}
+  #toast{bottom:28px;left:calc(50% + 124px)}
+  body:not(:has(#nav:not([hidden]))) #toast{left:50%}
+  .auth{min-height:calc(100dvh - 120px)}
+}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+@media print{
+  body,body:has(#nav:not([hidden])){background:#fff;padding:0;color:#000}
+  #nav,.fab,button,#toast{display:none!important}
+  main{max-width:none;padding:0}
+  .card{break-inside:avoid;border:1px solid #ccc}
+  .hero{background:#eee!important;color:#111!important;print-color-adjust:exact}
+  .hero *{color:#111!important}
+}
+</style></head><body><main id="app"></main><nav id="nav" hidden></nav><div id="toast" role="status" aria-live="polite"></div><button id="fab" class="fab" aria-label="Add transaction" onclick="go('money')"><i data-lucide="plus" aria-hidden="true"></i></button>
 <script>
 if(!window.CONFIG||CONFIG.SUPABASE_URL.startsWith('PASTE')){document.getElementById('app').innerHTML='<div class="card"><b>Almost there</b><br>Open <code>config.js</code> and paste your Supabase URL and anon key, then redeploy.</div>';throw new Error('config missing')}
 const db=supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);
@@ -252,6 +326,7 @@ const CATEGORY_TREE={
 };
 const INCOME_CATEGORIES={'Income':['Salary','Freelance / Side Income','Business Income','Interest / Dividends','Refunds','Other Income']};
 const categoryOptions=(includeIncome=false,selected='')=>Object.entries({...CATEGORY_TREE,...(includeIncome?INCOME_CATEGORIES:{})}).map(([group,items])=>`<optgroup label="${esc(group)}">${items.map(label=>{const value=group+' / '+label;return `<option value="${esc(value)}" ${selected===value?'selected':''}>${esc(label)}</option>`}).join('')}</optgroup>`).join('');
+const cap=s=>String(s).replace(/\b[a-z]/g,c=>c.toUpperCase());
 const categoryLabel=value=>String(value||'').includes(' / ')?String(value).split(' / ').slice(1).join(' / '):String(value||'Uncategorized / Cash Spent');
 let S={tab:'home',country:'',month:new Date().toLocaleDateString('en-CA').slice(0,7),entries:[],debts:[],todos:[],accounts:[],budgets:[],goals:[],assets:[],schedules:[],rate:24,cur:'INR',extra:0,ai:'',busy:false,lastAcc:'',preset:null,privacy:false};
 try{S.lastAcc=localStorage.getItem('mp:acc')||''}catch(e){}
@@ -266,13 +341,14 @@ function fail(e){let m=(e&&e.message)||String(e);if(/account_id|debt_id|person|e
 // One action at a time: blocks double-taps and shows every error as a toast.
 const guard=fn=>async function(...a){if(S.busy)return;S.busy=true;document.body.classList.add('busy');try{return await fn.apply(this,a)}catch(e){fail(e)}finally{S.busy=false;document.body.classList.remove('busy')}};
 const go=k=>{S.tab=k;render({tab:true})};
+const toggleMore=()=>{const s=$('#nav .sheet'),c=$('#nav .scrim');if(!s)return;const open=s.hidden;s.hidden=!open;c.hidden=!open};
 // Money helpers: every amount keeps its own currency; totals convert to the display currency.
 const cv=(a,f,t)=>f==t?+a:(f=='AED'?a*S.rate:a/S.rate);
 const oth=c=>c=='INR'?'AED':'INR';
 const fmt=(n,c)=>S.privacy?'••••••':c=='INR'?'₹'+Math.round(n).toLocaleString('en-IN'):'AED '+Math.round(n).toLocaleString('en-US');
 const D=(n,c=S.cur)=>`<b>${fmt(n,c)}</b>`;
 const sumC=(a,k)=>a.reduce((s,x)=>s+((x.currency||'INR')===S.cur?+x[k]:0),0);
-const cs=id=>`<select id="${id}"><option selected>${S.country==='AE'?'AED':'INR'}</option></select>`;
+const cs=id=>`<select id="${id}" class="cur"><option selected>${S.country==='AE'?'AED':'INR'}</option></select>`;
 const inMonth=(k=S.month)=>S.entries.filter(x=>x.date.startsWith(k));
 
 // ---- accounts, loans, borrowed ------------------------------------------
@@ -304,7 +380,7 @@ function payBox(x,pre){const id=pre+'-'+x.id,def=r2(Math.min(+x.emi,+x.balance))
   return `<div class="paybox" data-id="${x.id}"><div class="grid"><div><label class="mute" for="pa-${id}">Amount paying</label><input class="pa" id="pa-${id}" type="number" inputmode="decimal" min="0" step="any" value="${def}"></div><div>${accSel('ps-'+id,'Pay from account')}</div></div><button onclick="payLoan(this)">Pay now</button></div>`}
 function entryRow(x){const acc=x.account_id&&accById(x.account_id),k=x.kind,plus=['income','borrowed','received'].includes(k),cls=k==='income'||k==='received'?'ok':k==='borrowed'?'warn':'bad';
   const tag=k==='borrowed'?'<span class="tag">Borrowed</span>':k==='settled'?'<span class="tag">Repaid</span>':k==='lent'?'<span class="tag">Lent</span>':k==='received'?'<span class="tag">Received back</span>':k==='loanpay'?'<span class="tag">Loan</span>':'';
-  return `<div class="row"><div>${tag}${esc(x.title)}<div class="mute">${esc(x.category)} · ${x.date}${acc?' · '+esc(acc.name):''}${x.person?' · '+esc(x.person):''}${x.payment_method?' · '+esc(x.payment_method):''}${x.notes?' · '+esc(x.notes):''}${x.receipt_data?' · <a target="_blank" rel="noopener" href="'+x.receipt_data+'">Receipt</a>':''}</div></div><div><span class="${cls}">${plus?'+':'−'}</span>${D(x.amount,x.currency||'INR')}<button class="ghost" onclick="delEntry('${x.id}')">✕</button></div></div>`}
+  return `<div class="row"><div>${tag}${esc(x.title)}<div class="mute">${esc(x.category)} · ${x.date}${acc?' · '+esc(acc.name):''}${x.person?' · '+esc(x.person):''}${x.payment_method?' · '+esc(x.payment_method):''}${x.notes?' · '+esc(x.notes):''}${x.receipt_data?' · <a target="_blank" rel="noopener" href="'+x.receipt_data+'">Receipt</a>':''}</div></div><div><span class="amt"><span class="${cls}">${plus?'+':'−'}</span>${D(x.amount,x.currency||'INR')}</span><button class="ghost" onclick="delEntry('${x.id}')">✕</button></div></div>`}
 function lentPersonCard(p){const pid='lent-'+[...p.key].map(c=>c.charCodeAt(0).toString(36)).join('-');return `<div class="card person" data-k="${esc(encodeURIComponent(p.key))}" data-lent="1"><div class="row" style="border:0;padding-top:0"><div><b>${esc(p.name)}</b><div class="mute">Lent ${fmt(p.lent,S.cur)} · Received back ${fmt(p.received,S.cur)}</div></div><div><div class="big ${p.out>0?'ok':'mute'}" style="font-size:22px">${p.out<=0.001?'Repaid ✓':fmt(p.out,S.cur)}</div><div class="mute">${p.out>0?'they owe you':''}</div></div></div><div class="bar"><i style="width:${p.lent?Math.min(100,p.received/p.lent*100):0}%"></i></div>${p.out>0.001?`<div class="grid"><input class="lent-amount" type="number" min="0.01" step="any" placeholder="Amount received"><div>${accSel('lr-'+pid,'Deposit into account')}</div></div><div class="grid"><input class="lent-date" type="date" value="${ldate()}"><select class="lent-method"><option>Bank transfer</option><option>UPI</option><option>Cash</option><option>Card</option><option>Other</option></select></div><input class="lent-notes" placeholder="Notes (optional)"><button onclick="receiveLent(this)">Record repayment received</button>`:''}<details><summary class="paylink">History (${p.rows.length})</summary>${p.rows.map(entryRow).join('')}</details></div>`}
 function personCard(p){const pid=[...p.key].map(c=>c.charCodeAt(0).toString(36)).join('-'),pct=p.borrowed>0?Math.min(100,p.settled/p.borrowed*100):0,done=p.out<=0.001;
   return `<div class="card person" data-k="${esc(encodeURIComponent(p.key))}"><div class="row" style="border:0;padding-top:0"><div><b>${esc(p.name)}</b><div class="mute">Borrowed ${fmt(p.borrowed,S.cur)} · Repaid ${fmt(p.settled,S.cur)}</div></div><div><div class="big ${done?'ok':'bad'}" style="font-size:22px">${done?'Settled ✓':fmt(p.out,S.cur)}</div>${done?'':'<div class="mute">still to pay</div>'}</div></div>
@@ -323,7 +399,7 @@ async function load(){
   if(!S.country){render();return}
   S.cur=S.country==='IN'?'INR':'AED';
   $('#nav').hidden=true;
-  $('#app').innerHTML=`<section class="loading-panel"><div class="loading-brand"><span class="loading-spinner"></span><span>POCKETPLAN</span></div><h1>Preparing your workspace</h1><p>Securely organising your accounts and latest activity.</p><div class="loading-skeleton"><i></i><i></i><i></i></div></section>`;
+  $('#app').innerHTML=`<section class="loading-panel"><span class="loading-spinner"></span><h1>Preparing your workspace</h1><p>Securely organising your accounts and latest activity.</p><div class="loading-skeleton"><i></i><i></i><i></i></div></section>`;
   try {
     const [e,d,t,a,b,s,g,as,sc]=await Promise.all([q('entries').select('*').eq('country',S.country).order('date',{ascending:false}),q('debts').select('*').eq('country',S.country).order('rate',{ascending:false}),q('todos').select('*').eq('country',S.country).order('created'),q('accounts').select('*').eq('country',S.country).order('name'),q('budgets').select('*').eq('country',S.country).order('category'),q('settings').select('*').maybeSingle(),q('goals').select('*').eq('country',S.country).order('created_at'),q('assets').select('*').eq('country',S.country).order('name'),q('schedules').select('*').eq('country',S.country).order('next_date')]);
     const failed=[e,d,t,a,b,s,g,as,sc].find(x=>x.error);
@@ -352,7 +428,7 @@ function trend(){const ms=[...Array(6)].map((_,i)=>{const d=new Date(S.month+'-0
 function budgetBars(){const sp={};inMonth().filter(x=>x.kind=='expense').forEach(x=>{const k=x.category.toLowerCase();sp[k]=(sp[k]||0)+cv(x.amount,x.currency,S.cur)});
   const lim={};S.budgets.forEach(b=>{let limit=cv(b.amount,b.currency,S.cur);if(b.carryover){const prev=new Date(S.month+'-01');prev.setMonth(prev.getMonth()-1);const pm=ymd(prev).slice(0,7),spent=S.entries.filter(e=>e.kind==='expense'&&e.date.startsWith(pm)&&String(e.category||'').toLowerCase()===b.category.toLowerCase()).reduce((n,e)=>n+cv(e.amount,e.currency||'INR',S.cur),0);limit+=Math.max(0,cv(b.amount,b.currency,S.cur)-spent)}lim[b.category.toLowerCase()]=limit});
   const ks=[...new Set([...Object.keys(sp),...Object.keys(lim)])];
-  return ks.length?ks.map(k=>{const s=sp[k]||0,l=lim[k],pct=l?s/l*100:0,w=l?Math.min(100,pct):100,curMonth=S.month===ldate().slice(0,7),day=Math.max(1,new Date().getDate()),days=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate(),projected=curMonth?s/day*days:s,overForecast=!!l&&curMonth&&s<l&&projected>l;const note=pct>=100?' · over budget':pct>=90?' · near limit':pct>=70?' · watch spending':overForecast?' · projected over budget':'';return `<div><div class="row" style="border:0;padding:6px 0 0"><span>${esc(k)} <small class="mute">${l?Math.round(pct)+'%'+note:''}</small></span><span class="${l&&s>l?'bad':''}">${fmt(s,S.cur)}${l?' / '+fmt(l,S.cur):' (no budget)'}</span></div><div class="bar"><i class="${l&&(pct>=100||overForecast)?'over':''}" style="width:${w}%;${l?'':'opacity:.35'}"></i></div>${overForecast?`<div class="mute bad">At current pace, spending may reach ${fmt(projected,S.cur)} by month-end.</div>`:''}</div>`}).join(''):'<div class="mute">Add expenses and budgets to see this.</div>'}
+  return ks.length?ks.map(k=>{const s=sp[k]||0,l=lim[k],pct=l?s/l*100:0,w=l?Math.min(100,pct):100,curMonth=S.month===ldate().slice(0,7),day=Math.max(1,new Date().getDate()),days=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate(),projected=curMonth?s/day*days:s,overForecast=!!l&&curMonth&&s<l&&projected>l;const note=pct>=100?' · over budget':pct>=90?' · near limit':pct>=70?' · watch spending':overForecast?' · projected over budget':'';return `<div><div class="row" style="border:0;padding:6px 0 0"><span>${esc(cap(categoryLabel(k)))} <small class="mute">${l?Math.round(pct)+'%'+note:''}</small></span><span class="${l&&s>l?'bad':''}">${fmt(s,S.cur)}${l?' / '+fmt(l,S.cur):'<small class="mute"> no budget</small>'}</span></div><div class="bar"><i class="${l&&(pct>=100||overForecast)?'over':''}" style="width:${w}%;${l?'':'opacity:.35'}"></i></div>${overForecast?`<div class="mute bad">At current pace, spending may reach ${fmt(projected,S.cur)} by month-end.</div>`:''}</div>`}).join(''):'<div class="mute">Add expenses and budgets to see this.</div>'}
 
 function forecastCash(days){const now=new Date();now.setHours(0,0,0,0);const end=new Date(now);end.setDate(end.getDate()+days);let delta=0;const avgExpense=Math.max(0,S.entries.filter(e=>e.kind==='expense'&&e.date>=ymd(new Date(now.getTime()-89*864e5))&&e.date<=ldate()).reduce((n,e)=>n+cv(e.amount,e.currency||'INR',S.cur),0)/90);delta-=avgExpense*days;
   for(const x of S.schedules.filter(v=>v.active)){let d=new Date(x.next_date+'T00:00:00'),guard=0;while(d<now&&guard++<500){if(x.repeat_every==='none')break;if(x.repeat_every==='weekly')d.setDate(d.getDate()+7);else if(x.repeat_every==='monthly')d.setMonth(d.getMonth()+1);else if(x.repeat_every==='yearly')d.setFullYear(d.getFullYear()+1)}guard=0;while(d<=end&&guard++<100){if(d>=now)delta+=(x.kind==='income'?1:-1)*cv(x.amount,x.currency||'INR',S.cur);if(x.repeat_every==='none')break;if(x.repeat_every==='weekly')d.setDate(d.getDate()+7);else if(x.repeat_every==='monthly')d.setMonth(d.getMonth()+1);else if(x.repeat_every==='yearly')d.setFullYear(d.getFullYear()+1)}}
@@ -361,15 +437,17 @@ function forecastCash(days){const now=new Date();now.setHours(0,0,0,0);const end
   return {balance:sumC(S.accounts,'balance')+delta,delta,avgExpense}}
 function render(o={}){
   const a=$('#app'),t=totals(),nav=$('#nav');
-  if(!S.country){nav.hidden=true;a.classList.add('anim');a.innerHTML=`<div class="welcome"><div class="eyebrow">YOUR MONEY, WITH A PLAN</div><h1>Make your money<br><span>work for you.</span></h1><p class="lead">A calmer way to track accounts, get debt-free, and stay ahead of every payment.</p><div class="country-grid"><button class="country-card" onclick="chooseCountry('IN')"><span class="flag">🇮🇳</span><span><b>Manage India</b><small>INR · Indian accounts & loans</small></span><span class="arrow">↗</span></button><button class="country-card" onclick="chooseCountry('AE')"><span class="flag">🇦🇪</span><span><b>Manage UAE</b><small>AED · UAE accounts & loans</small></span><span class="arrow">↗</span></button></div><p class="privacy-note">✦ Separate records. No currency conversion. Your financial picture stays in its own lane.</p></div>`;return}
+  if(!S.country){nav.hidden=true;a.classList.add('anim');a.innerHTML=`<div class="welcome"><div class="brand-lockup"><span class="brand-mark">P</span>PocketPlan</div><h1>Which money are you managing?</h1><p class="lead">India and UAE records are kept in separate workspaces.</p><div class="country-grid"><button class="country-card" onclick="chooseCountry('IN')"><span class="flag">🇮🇳</span><span><b>India</b><small>Indian rupees · INR</small></span><span class="arrow">›</span></button><button class="country-card" onclick="chooseCountry('AE')"><span class="flag">🇦🇪</span><span><b>UAE</b><small>UAE dirhams · AED</small></span><span class="arrow">›</span></button></div></div>`;return}
   const keep=(o.tab||o.clear)?null:snap();
-  nav.hidden=false;
-  if(o.tab||!nav.children.length){nav.innerHTML=[['home','Overview','layout-dashboard'],['money','Transactions','arrow-left-right'],['acc','Accounts','wallet'],['debts','Loans','landmark'],['borrow','People & Debts','users'],['todo','Bills & Reminders','calendar-clock'],['plan','Plan & Goals','target'],['reports','Reports','chart-no-axes-combined'],['settings','Settings','settings-2'],['ai','AI Coach','sparkles']].map(([k,l,ic])=>`<button class="${S.tab==k?'on':''}" onclick="go('${k}')"><i data-lucide="${ic}" aria-hidden="true"></i><span>${l}</span></button>`).join('');if(window.lucide)lucide.createIcons();const on=nav.querySelector('.on');if(on&&on.scrollIntoView)on.scrollIntoView({inline:'center',block:'nearest'})}
+  nav.hidden=false;document.body.dataset.tab=S.tab;
+  if(o.tab||!nav.children.length){const tabs=[['home','Overview','layout-dashboard',1,'Overview'],['money','Transactions','arrow-left-right',1,'Activity'],['debts','Loans','landmark',1,'Loans'],['plan','Plan & Goals','target',1,'Plan'],['acc','Accounts','wallet'],['borrow','People & Debts','users'],['todo','Bills & Reminders','calendar-clock'],['reports','Reports','chart-no-axes-combined'],['ai','AI Coach','sparkles'],['settings','Settings','settings-2']];
+    const tbtn=([k,l,ic,p,sh],inSheet)=>`<button class="${S.tab==k?'on':''}${p||inSheet?'':' sec'}" onclick="go('${k}')"><i data-lucide="${ic}" aria-hidden="true"></i><span class="lg">${l}</span><span class="sh">${sh||l}</span></button>`;
+    nav.innerHTML=`<div class="brand"><span class="brand-mark">P</span>PocketPlan</div>`+tabs.map(t=>tbtn(t)).join('')+`<button class="more-btn${tabs.some(t=>!t[3]&&t[0]==S.tab)?' on':''}" onclick="toggleMore()" aria-label="More pages"><i data-lucide="layout-grid" aria-hidden="true"></i><span>More</span></button><div class="scrim" hidden onclick="toggleMore()"></div><div class="sheet" hidden>${tabs.filter(t=>!t[3]).map(t=>tbtn(t,1)).join('')}</div>`;if(window.lucide)lucide.createIcons();}
   a.classList.toggle('anim',!!o.tab);
   const mon=`<input type="month" value="${S.month}" onchange="S.month=this.value;render()">`;
   if(S.tab=='home'){const p0=payoff(0),p1=payoff(S.extra),up=upcoming(7),have=sumC(S.accounts,'balance'),owed=owedTotal(),lent=lentPeople().reduce((n,p)=>n+Math.max(0,p.out),0);
-    a.innerHTML=`<div class="row" style="border:0"><h1>${S.country==='IN'?'🇮🇳 India money overview':'🇦🇪 UAE money overview'}</h1><button class="ghost" onclick="switchCountry()">Switch country</button></div>${mon}
-    <div class="card hero balance-hero"><div class="balance-top"><div><div class="hero-kicker">TOTAL MONEY IN BANK ACCOUNTS</div><div class="big balance-total">${fmt(have,S.cur)}</div><div class="hero-sub">${S.country==='IN'?'India workspace · INR':'UAE workspace · AED'} <span class="live-dot"></span> Your recorded balances</div></div><div class="balance-mark"><i data-lucide="wallet"></i></div></div></div>
+    a.innerHTML=`<div class="row"><h1>Overview</h1><button class="secondary-button chip" onclick="switchCountry()">${S.country==='IN'?'🇮🇳 India':'🇦🇪 UAE'} · Switch</button></div>${mon}
+    <div class="card hero balance-hero"><div class="hero-kicker">Money in your accounts</div><div class="big balance-total">${fmt(have,S.cur)}</div><div class="hero-sub">Recorded balances · ${S.cur}</div><div class="flow"><div class="flow-bar"><i class="${t.exp>t.inc?'over':''}" style="width:${t.inc>0?Math.min(100,t.exp/t.inc*100):(t.exp>0?100:0)}%"></i></div><div class="flow-legend"><span>Spent <b>${fmt(t.exp,S.cur)}</b> of <b>${fmt(t.inc,S.cur)}</b> this month</span><span><b>${fmt(t.left,S.cur)}</b> left after EMIs</span></div></div></div>
     <div class="metric-grid">
       <div class="metric-card metric-income"><div class="metric-label"><i data-lucide="trending-up"></i> Income this month</div><div class="metric-value">${fmt(t.inc,S.cur)}</div></div>
       <div class="metric-card metric-expense"><div class="metric-label"><i data-lucide="trending-down"></i> Expenses this month</div><div class="metric-value">${fmt(t.exp,S.cur)}</div></div>
@@ -386,7 +464,7 @@ function render(o={}){
     a.innerHTML=`<h1>Income and expenses</h1>${mon}<div class="card">
     <select id="k" onchange="kindChange()"><option value="income">Income (salary)</option><option value="expense" selected>Expense</option><option value="borrowed">Borrowed (money from someone)</option><option value="lent">Lent (money to someone)</option><option value="received">Received back (lent money)</option></select>
     <div id="pnw" hidden><input id="pn" list="people-list" placeholder="Person name (borrowed from / lent to)" autocomplete="off"><datalist id="people-list">${people().map(p=>`<option value="${esc(p.name)}"></option>`).join('')}</datalist></div>
-    <div class="grid"><input id="ti" placeholder="What for? e.g. Salary, Rent"><button class="secondary-button" type="button" onclick="voiceExpense()">🎙 Voice</button></div><div class="grid"><input id="am" type="number" inputmode="decimal" min="0" step="any" placeholder="Amount">${cs('cu')}</div>
+    <div class="grid"><input id="ti" placeholder="What for? e.g. Salary, Rent"><button class="secondary-button g-auto" type="button" onclick="voiceExpense()">🎙 Voice</button></div><div class="grid"><input id="am" type="number" inputmode="decimal" min="0" step="any" placeholder="Amount">${cs('cu')}</div>
     ${accSel('ea','Pay from account')}
     <input id="dt" type="date" value="${ldate()}"><div id="catw"><label class="mute" for="ca">Category</label><select id="ca">${categoryOptions($('#k')?.value==='income')}</select><p class="mute" style="margin:0 0 8px">Choose a predefined category. You can change it before saving.</p></div><label class="mute" for="receipt">Attach receipt photo (optional, max 1 MB)</label><input id="receipt" type="file" accept="image/*"><button onclick="addEntry()">Add transaction</button></div>
     <div class="card"><h2 style="margin-top:0">Monthly budget per category</h2><div class="grid"><select id="bc">${categoryOptions()}</select><input id="ba" type="number" inputmode="decimal" placeholder="Limit per month"></div><label><input id="bcarry" type="checkbox" style="width:auto"> Carry unused budget from last month</label><div class="grid">${cs('bu')}<button onclick="addBudget()">Set budget</button></div>
@@ -397,7 +475,7 @@ function render(o={}){
     <div class="card"><select id="at"><option value="bank">Bank account</option><option value="cash">Cash in hand</option></select><input id="an" placeholder="Name, e.g. SBI savings, Emirates NBD, Wallet"><div class="grid"><input id="ab" type="number" inputmode="decimal" placeholder="Balance">${cs('ac')}</div><button onclick="addAcc()">Add account</button></div>
     <div class="card">${S.accounts.length?S.accounts.map(x=>`<div class="row"><div>${esc(x.name)}<div class="mute">${x.kind=='cash'?'Cash in hand':'Bank'}</div></div><div>${D(x.balance,x.currency)}<button class="ghost" style="color:var(--ok)" onclick="editBal('${x.id}')">Edit</button><button class="ghost" onclick="del('accounts','${x.id}')">✕</button></div></div>`).join(''):'<div class="mute">Add your bank accounts and the cash you hold.</div>'}</div>`}
   if(S.tab=='debts'){
-    a.innerHTML=`<h1>Debts and EMIs</h1><div class="card"><input id="dn" placeholder="Loan name"><div class="grid"><input id="db" type="number" inputmode="decimal" placeholder="Balance left"><input id="de" type="number" inputmode="decimal" placeholder="Monthly EMI"><input id="dr" type="number" inputmode="decimal" placeholder="Interest % per year"><input id="dd" type="number" inputmode="numeric" placeholder="Due day (1-31)"></div>${cs('dc')}<button onclick="addDebt()">Add debt</button></div>
+    a.innerHTML=`<h1>Debts and EMIs</h1><div class="card"><input id="dn" placeholder="Loan name"><div class="grid"><input id="db" type="number" inputmode="decimal" placeholder="Balance left"><input id="de" type="number" inputmode="decimal" placeholder="Monthly EMI"><input id="dr" type="number" inputmode="decimal" placeholder="Interest % / year"><input id="dd" type="number" inputmode="numeric" placeholder="Due day (1-31)"></div>${cs('dc')}<button onclick="addDebt()">Add debt</button></div>
     <div class="card">${S.debts.length?S.debts.map(x=>{const cl=+x.balance<=0,c=x.currency||'INR';return `<div class="loan"><div class="row" style="border:0;padding-bottom:4px"><div>${esc(x.name)}<div class="mute">${cl?'Cleared 🎉':`Due on ${x.due_day} · ${x.rate}% · clears in ${ym(solo(x))}`}</div></div><div>${D(x.emi,c)}<div class="mute">${fmt(x.balance,c)} left</div><button class="ghost" onclick="del('debts','${x.id}')">✕</button></div></div>${cl?'':payBox(x,'l')}</div>`}).join(''):'<div class="mute">No debts added.</div>'}</div>`}
   if(S.tab=='borrow'){const ps=people(),owed=owedTotal(),open=ps.filter(p=>p.out>0.001).length;
     a.innerHTML=`<h1>People & debts</h1><div class="card"><div class="grid"><div><div class="mute">Total borrowed</div><div class="big">${fmt(ps.reduce((n,p)=>n+p.borrowed,0),S.cur)}</div></div><div><div class="mute">Total repaid</div><div class="big ok">${fmt(ps.reduce((n,p)=>n+p.settled,0),S.cur)}</div></div><div><div class="mute">Outstanding debt</div><div class="big ${owed>0?'bad':'ok'}">${fmt(owed,S.cur)}</div></div></div><div class="mute">${ps.length?`${open} of ${ps.length} ${ps.length===1?'person':'people'} still to be paid`:'Add new borrowing from Transactions → Borrowed.'}</div></div>${ps.length?ps.map(personCard).join(''):'<div class="card"><div class="mute">Nothing borrowed yet. In Transactions choose “Borrowed”, type the person’s name and the amount. The same name always adds to the same person.</div></div>'}<h2>Money lent to others</h2><div class="card"><div class="big ok">${fmt(lentPeople().reduce((n,p)=>n+Math.max(0,p.out),0),S.cur)}</div><div class="mute">Total still owed to you</div></div>${lentPeople().length?lentPeople().map(lentPersonCard).join(''):'<div class="card"><div class="mute">No lending records yet. In Transactions choose “Lent” to record money you gave to someone.</div></div>'}`}
@@ -430,7 +508,7 @@ function render(o={}){
   }
   if(S.tab==='reports'){const months=[...Array(6)].map((_,i)=>{const d=new Date(S.month+'-01');d.setMonth(d.getMonth()-5+i);return d.toISOString().slice(0,7)});const rows=months.map(k=>{const a=S.entries.filter(e=>e.date.startsWith(k)&&e.kind==='income').reduce((n,e)=>n+cv(e.amount,e.currency||'INR',S.cur),0),b=S.entries.filter(e=>e.date.startsWith(k)&&e.kind==='expense').reduce((n,e)=>n+cv(e.amount,e.currency||'INR',S.cur),0);return {k,a,b}});a.innerHTML=`<h1>Reports & analytics</h1>${mon}<div class="card"><h2>Monthly cash flow</h2>${rows.map(r=>`<div style="margin:12px 0"><div class="row"><span>${r.k}</span><span>Income ${fmt(r.a,S.cur)} · Expenses ${fmt(r.b,S.cur)}</span></div><div class="bar"><i style="width:${Math.min(100,r.a/Math.max(1,r.a,r.b)*100)}%"></i></div><div class="bar"><i class="${r.b>r.a?'over':''}" style="width:${Math.min(100,r.b/Math.max(1,r.a,r.b)*100)}%"></i></div></div>`).join('')}<p class="mute">Bars are relative within each month. These reports use recorded transactions only.</p></div><div class="card"><h2>Spending by category · ${S.month}</h2>${Object.entries(inMonth().filter(e=>e.kind==='expense').reduce((o,e)=>{const k=e.category||'General';o[k]=(o[k]||0)+cv(e.amount,e.currency||'INR',S.cur);return o},{})).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="row"><span>${esc(k)}</span><b>${fmt(v,S.cur)}</b></div>`).join('')||'<p class="mute">No expenses for this month.</p>'}</div><div class="card"><h2>Export & print</h2><div class="grid"><button onclick="exportCsv()">Export transactions CSV</button><button onclick="exportExcel()">Export for Excel</button><button onclick="exportBackup()">Download backup JSON</button><button class="secondary-button" onclick="window.print()">Print / Save PDF</button></div><label class="mute" for="backupFile">Restore a PocketPlan JSON backup (same signed-in account and country only)</label><input id="backupFile" type="file" accept="application/json,.json" onchange="restoreBackup(this)"><p class="mute">Keep downloaded backups somewhere private. CSV is suitable for spreadsheets; PDF uses your browser print dialog.</p></div>`}
   if(S.tab==='settings'){a.innerHTML=`<h1>Settings & privacy</h1><div class="card"><h2>Privacy mode</h2><p class="mute">Hide displayed monetary amounts on this device. This is a screen privacy feature, not a substitute for signing out or device security.</p><button onclick="togglePrivacy()">${S.privacy?'Show balances':'Hide balances'}</button></div><div class="card"><h2>Quick PIN lock</h2><p class="mute">A convenience screen lock for casual privacy. It is not a replacement for Supabase authentication or your device passcode and can be bypassed by someone with developer-tools access.</p><div class="grid"><button onclick="setPin()">Set / change PIN</button><button class="secondary-button" onclick="lockScreen()">Lock now</button><button class="ghost" onclick="removePin()">Remove PIN</button></div></div><div class="card"><h2>Backup & data portability</h2><p class="mute">Download a JSON backup of your current country workspace, or export transactions as CSV.</p><div class="grid"><button onclick="exportBackup()">Download workspace backup</button><button class="secondary-button" onclick="exportCsv()">Export CSV</button><button class="secondary-button" onclick="exportExcel()">Export for Excel</button><button class="secondary-button" onclick="window.print()">Print / Save PDF</button></div></div><div class="card"><h2>Account security</h2><ul><li>Use a unique password and keep Supabase email verification enabled.</li><li>Never put Gemini or Supabase service-role keys in browser code.</li><li>Enable Row Level Security on every user-owned table.</li><li>Sign out on shared devices and protect your device with its own passcode/biometrics.</li></ul><button class="secondary-button" onclick="db.auth.signOut()">Sign out</button></div><div class="card"><h2>Delete your account</h2><p class="mute">For safety, account deletion requires an authenticated server-side admin workflow. Do not delete database rows manually without first exporting a backup.</p><p class="mute">Ask the project administrator to delete the Supabase Auth user and associated records securely.</p></div>`}
-  if(S.tab=='ai'){a.innerHTML=`<div class="ai-heading"><div><div class="eyebrow">POCKETPLAN INTELLIGENCE</div><h1>AI Finance Coach</h1><p class="mute">A personal finance guide powered by Gemini · ${S.country==='IN'?'India / INR':'UAE / AED'} workspace only</p></div><div class="ai-orb">✦</div></div><div class="card ai-welcome"><div class="ai-kicker">YOUR FINANCIAL SNAPSHOT</div><h2>How can I help you today?</h2><p class="mute">Ask about affordability, spending patterns, debt repayment or your next savings goal. Answers use the records saved in this workspace.</p><div class="ai-prompts"><button class="ai-prompt" onclick="promptAI('Review my spending this month and identify the biggest opportunities to save.')"><span>◒</span><b>Review my spending</b><small>Find patterns and opportunities</small></button><button class="ai-prompt" onclick="promptAI('Can I afford a purchase of 5000 in my current financial situation? Use my recorded balances and upcoming bills.')"><span>↗</span><b>Can I afford it?</b><small>Check your cash flow first</small></button><button class="ai-prompt" onclick="promptAI('Help me make a realistic debt repayment plan using my recorded loans, EMIs, borrowed balances and cash flow.')"><span>⇣</span><b>Plan debt repayment</b><small>Build a practical payoff order</small></button><button class="ai-prompt" onclick="promptAI('Help me create a monthly savings plan based on my recorded income, expenses, budgets and upcoming obligations.')"><span>◎</span><b>Improve my budget</b><small>Set a realistic savings target</small></button></div><label class="mute" for="q">Ask your own question</label><textarea id="q" rows="3" placeholder="e.g. Can I afford ₹5,000 this month? What should I reduce first?"></textarea><div class="ai-send-row"><span class="mute">Your Gemini key stays on the server.</span><button onclick="ask()">Ask Gemini <span>↗</span></button></div></div><div class="card ai-answer"><div class="ai-answer-head"><span class="ai-answer-icon">✦</span><div><b>Personalized insight</b><div class="mute">Based on your saved records</div></div></div><pre id="out">${esc(S.ai)||'Your answer will appear here after you ask a question. Gemini only receives the current workspace summary provided by PocketPlan.'}</pre></div>`}
+  if(S.tab=='ai'){a.innerHTML=`<div class="ai-heading"><div><h1>AI Finance Coach</h1><p class="mute">A personal finance guide powered by Gemini · ${S.country==='IN'?'India / INR':'UAE / AED'} workspace only</p></div><div class="ai-orb">✦</div></div><div class="card ai-welcome"><div class="ai-kicker">YOUR FINANCIAL SNAPSHOT</div><h2>How can I help you today?</h2><p class="mute">Ask about affordability, spending patterns, debt repayment or your next savings goal. Answers use the records saved in this workspace.</p><div class="ai-prompts"><button class="ai-prompt" onclick="promptAI('Review my spending this month and identify the biggest opportunities to save.')"><span>◒</span><b>Review my spending</b><small>Find patterns and opportunities</small></button><button class="ai-prompt" onclick="promptAI('Can I afford a purchase of 5000 in my current financial situation? Use my recorded balances and upcoming bills.')"><span>↗</span><b>Can I afford it?</b><small>Check your cash flow first</small></button><button class="ai-prompt" onclick="promptAI('Help me make a realistic debt repayment plan using my recorded loans, EMIs, borrowed balances and cash flow.')"><span>⇣</span><b>Plan debt repayment</b><small>Build a practical payoff order</small></button><button class="ai-prompt" onclick="promptAI('Help me create a monthly savings plan based on my recorded income, expenses, budgets and upcoming obligations.')"><span>◎</span><b>Improve my budget</b><small>Set a realistic savings target</small></button></div><label class="mute" for="q">Ask your own question</label><textarea id="q" rows="3" placeholder="e.g. Can I afford ₹5,000 this month? What should I reduce first?"></textarea><div class="ai-send-row"><span class="mute">Your Gemini key stays on the server.</span><button onclick="ask()">Ask Gemini <span>↗</span></button></div></div><div class="card ai-answer"><div class="ai-answer-head"><span class="ai-answer-icon">✦</span><div><b>Personalized insight</b><div class="mute">Based on your saved records</div></div></div><pre id="out">${esc(S.ai)||'Your answer will appear here after you ask a question. Gemini only receives the current workspace summary provided by PocketPlan.'}</pre></div>`}
   unsnap(keep);postRender();if(o.tab)window.scrollTo(0,0);
 }
 const addSchedule=guard(async()=>{const title=$('#scTitle').value.trim(),amount=Number($('#scAmount').value),next_date=$('#scDate').value,kind=$('#scKind').value,repeat_every=$('#scRepeat').value,currency=$('#scCur').value,category=$('#scCategory').value.trim()||'Scheduled',account_id=$('#scAccount').value||null;if(!title||!Number.isFinite(amount)||amount<=0||!next_date)return toast('Enter a title, positive amount, and next date.',1);return add('schedules',{title,amount,next_date,kind,repeat_every,currency,category,account_id,active:true})});
@@ -544,7 +622,7 @@ function exportCsv(){const q=v=>'"'+String(v).replace(/"/g,'""')+'"';const csv=[
 function exportExcel(){const q=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');const rows=[['Date','Type','Title','Category','Amount','Currency','Person','Payment method','Notes','Account'],...S.entries.map(x=>[x.date,x.kind,x.title,x.category,x.amount,x.currency,x.person||'',x.payment_method||'',x.notes||'',(accById(x.account_id)||{}).name||''])];const html='<!doctype html><html><head><meta charset="utf-8"></head><body><table border="1">'+rows.map(r=>'<tr>'+r.map(c=>'<td>'+q(c)+'</td>').join('')+'</tr>').join('')+'</table></body></html>';downloadFile(`pocketplan-${S.country}-${ldate()}.xls`,html,'application/vnd.ms-excel');toast('Excel-compatible spreadsheet downloaded')}
 async function pinHash(pin){const bytes=new TextEncoder().encode(pin);const digest=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('')}
 async function setPin(){if(!crypto?.subtle)return toast('PIN lock requires a modern browser on HTTPS.',1);const pin=prompt('Choose a 4–12 digit convenience PIN:');if(pin===null)return;if(!/^\d{4,12}$/.test(pin))return toast('Use 4–12 digits.',1);const again=prompt('Enter the PIN again:');if(pin!==again)return toast('PINs did not match.',1);localStorage.setItem('mp:pinHash',await pinHash(pin));toast('PIN set. You can lock the screen from Settings.')}
-function lockScreen(){if(!localStorage.getItem('mp:pinHash'))return toast('Set a PIN first in Settings.',1);let el=document.getElementById('pin-overlay');if(!el){el=document.createElement('div');el.id='pin-overlay';document.body.appendChild(el)}el.innerHTML='<div class="pin-card"><div class="eyebrow">POCKETPLAN PRIVACY</div><h2>Screen locked</h2><p class="mute">Enter your local convenience PIN to continue.</p><input id="pin-entry" type="password" inputmode="numeric" autocomplete="current-password" maxlength="12" placeholder="PIN"><button style="width:100%" onclick="unlockPin()">Unlock</button><p id="pin-error" class="bad"></p></div>';el.style.display='grid';setTimeout(()=>document.getElementById('pin-entry')?.focus(),50)}
+function lockScreen(){if(!localStorage.getItem('mp:pinHash'))return toast('Set a PIN first in Settings.',1);let el=document.getElementById('pin-overlay');if(!el){el=document.createElement('div');el.id='pin-overlay';document.body.appendChild(el)}el.innerHTML='<div class="pin-card"><h2>Screen locked</h2><p class="mute">Enter your local convenience PIN to continue.</p><input id="pin-entry" type="password" inputmode="numeric" autocomplete="current-password" maxlength="12" placeholder="PIN"><button style="width:100%" onclick="unlockPin()">Unlock</button><p id="pin-error" class="bad"></p></div>';el.style.display='grid';setTimeout(()=>document.getElementById('pin-entry')?.focus(),50)}
 async function unlockPin(){const el=document.getElementById('pin-overlay'),pin=document.getElementById('pin-entry')?.value||'';if(await pinHash(pin)!==localStorage.getItem('mp:pinHash')){document.getElementById('pin-error').textContent='Incorrect PIN. Try again.';return}el?.remove()}
 async function removePin(){const hash=localStorage.getItem('mp:pinHash');if(!hash)return toast('No PIN is configured.');const pin=prompt('Enter your current PIN to remove it:');if(pin===null)return;if(await pinHash(pin)!==hash)return toast('Incorrect PIN.',1);localStorage.removeItem('mp:pinHash');document.getElementById('pin-overlay')?.remove();toast('PIN removed')}
 async function setRate(v){if(!(v>0))return;S.rate=v;await db.from('settings').upsert({rate:v},{onConflict:'user_id'});render()}
@@ -591,7 +669,7 @@ async function ask(){
 }
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js');
 try{if(localStorage.getItem('mp:pinHash'))lockScreen()}catch(e){}
-function login(msg=''){$('#nav').hidden=true;$('#app').innerHTML=`<section class="login-shell"><div class="login-art"><div class="art-spark spark-one">✦</div><div class="art-spark spark-two">✧</div><div class="money-mascot"><div class="mascot-leaf">🌱</div><div class="mascot-face"><span class="eye"></span><span class="eye"></span><span class="cheek left"></span><span class="cheek right"></span><span class="smile"></span></div><div class="mascot-body">₹ <span>♥</span></div></div><div class="floating-coin coin-one">₹</div><div class="floating-coin coin-two">✦</div><div class="art-caption"><b>Little steps. Big progress.</b><span>Your money journey starts here.</span></div></div><div class="login-panel"><div class="brand-mark">🐣 <span>PocketPlan</span></div><div class="eyebrow">YOUR FRIENDLY MONEY SPACE</div><h1>Hey there!<br><span>Let’s get you</span><br>money-ready.</h1><p class="lead">A little more clarity, a little less money stress.</p><form class="login-form" onsubmit="event.preventDefault();signIn()"><label for="em">Email address</label><input id="em" type="email" placeholder="you@example.com" autocomplete="username" required><label for="pw">Password</label><input id="pw" type="password" placeholder="Enter your password" autocomplete="current-password" required><button class="login-button" type="submit">Let’s go <span>→</span></button><div class="bad login-error">${msg}</div></form><div class="login-foot">🔒 Private, secure, and just for you</div></div></section>`}
+function login(msg=''){$('#nav').hidden=true;$('#app').innerHTML=`<section class="auth"><div class="auth-card"><div class="brand-lockup"><span class="brand-mark">P</span>PocketPlan</div><h1>Sign in</h1><p class="lead">Your private planner for spending, loans and savings.</p><form class="login-form" onsubmit="event.preventDefault();signIn()"><label for="em">Email</label><input id="em" type="email" placeholder="you@example.com" autocomplete="username" autocapitalize="none" required><label for="pw">Password</label><input id="pw" type="password" placeholder="Your password" autocomplete="current-password" required><button class="login-button" type="submit">Sign in</button><div class="bad login-error" role="alert">${msg}</div></form></div></section>`}
 async function signIn(){const email=$('#em').value;const{error}=await db.auth.signInWithPassword({email,password:$('#pw').value});if(error){login(esc(error.message));$('#em').value=email}}
 // Only (re)load when the signed-in user actually changes. Token refreshes and tab re-focus no longer reload the app.
 let uid=null;

@@ -64,7 +64,7 @@ The included `api/advice.js` is a Vercel serverless function. It calls `https://
 
 The transaction, monthly-budget, and scheduled-cash-flow forms include predefined category groups for Housing & Home, Utilities & Bills, Food & Dining, Transportation & Travel, Shopping & Lifestyle, Entertainment & Subscriptions, Health & Wellness, Education & Self-Improvement, Financial & Investments, and Miscellaneous & Others. Income transactions also include Salary, Freelance / Side Income, Business Income, Interest / Dividends, Refunds, and Other Income. Categories are stored with their group prefix to keep similarly named items distinguishable in reports. Existing historical category labels are retained.
 
-The interface uses a premium responsive finance-dashboard design: crisp navy/teal palette, restrained motion, Lucide line icons in the navigation, responsive cards, polished country workspaces, charts, and a redesigned AI Coach with suggested questions. The interface is designed to feel like a modern finance product rather than a playful cartoon theme.
+The interface is a single mobile-first design system (ink-indigo + marigold accent, Figtree / Bricolage Grotesque type) that follows the device's light or dark setting. On phones it has a bottom tab bar (Overview, Activity, Loans, Plan, More) with a quick-add button on Overview; on desktop it becomes a left sidebar with all pages.
 
 ## Feature notes and limitations
 
