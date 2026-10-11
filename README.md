@@ -1,59 +1,80 @@
-# Money Planner: setup (about 15 minutes)
+# PocketPlan — Personal Finance Planner
 
-**1. Database (Supabase)**
-- supabase.com > New project.
-- SQL Editor > paste all of `schema.sql` > Run. (Safe to run again later.)
-- Authentication > Users > Add user > your email and password, tick "Auto Confirm User".
-- Authentication > Sign In / Providers > turn OFF "Allow new users to sign up". Now only you can log in.
-- Project Settings > API: copy the Project URL and the anon key.
+A responsive personal finance web app with separate India (INR) and UAE (AED) workspaces. Built with vanilla HTML/CSS/JavaScript, Supabase Auth/Postgres, Vercel serverless functions, and Google Gemini AI.
 
-**2. Config**
-- Open `config.js` and paste the Project URL and anon key.
+## Features
 
-**3. Vercel AI Gateway key**
-- Open Vercel > AI Gateway and create an API key. Check the selected model’s pricing and available credits before using it.
+- Password-protected sign-in using Supabase Auth; row-level security for user-owned data.
+- India and UAE workspaces kept separate.
+- Income, expenses, borrowed money, account-linked transactions, and CSV export.
+- Person-wise borrowed-money tracking with partial/full settlements and history.
+- Loans/EMIs, payoff estimates, payments, due dates, reminders, and repeating weekly/monthly/yearly reminders.
+- Monthly category budgets with 70%, 90%, and over-budget indicators.
+- Bank/cash accounts and balances.
+- Financial planning page with tracked net worth, manual assets/investments, savings goals, progress bars, and a simple 30-day cash-flow estimate.
+- Six-month income/expense trend, print/save-as-PDF, and quick transaction voice entry on supported browsers.
+- Gemini AI Coach uses the selected workspace's saved financial snapshot for advice. API key remains server-side.
+- Responsive mobile layout and installable PWA shell.
 
-**4. Deploy (Vercel)**
-- Put this folder on GitHub (new private repo, upload the files).
-- vercel.com > Add New > Project > import the repo > before Deploy, add Environment Variables:
-  `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `AI_GATEWAY_API_KEY` > Deploy. Optional: set `AI_GATEWAY_MODEL` to a model ID shown in the Vercel AI Gateway model catalogue (default: `anthropic/claude-sonnet-4.5`).
-- If you add the variables after deploying, click Redeploy.
+## 1. Create the Supabase project
 
-**5. Phone**
-- Open your Vercel link > browser menu > "Add to Home screen". It opens like an app, full screen.
+1. Create a project at https://supabase.com.
+2. Open **SQL Editor**, paste the complete `schema.sql`, and run it. This creates/updates the tables, indexes, and row-level security policies, including `goals` and `assets`.
+3. Under **Authentication → Users**, create your own user. For a private single-user app, turn off public sign-ups in **Authentication → Sign In / Providers**.
+4. In **Project Settings → API**, copy the Project URL and anon/public key.
 
-Notes: your data is private to your login (row-level security). The exchange rate is editable on the Overview page.
+> If you already have data in an older version, back up your database first, then run the full updated `schema.sql`. Existing records are retained; old entries default to the India workspace unless their currency is AED.
 
-\n## Redesign notes\n\nThis version includes a cleaner responsive interface, improved navigation, more consistent cards and forms, focus states, and clearer validation for transaction, budget, account, task, and loan inputs. It also displays a helpful retry panel when database reads fail. Your existing Supabase tables and deployment flow are retained.\n
-## India and UAE workspaces
+## 2. Configure the frontend
 
-The home screen lets you choose **Manage India** or **Manage UAE**. Records are tagged with a country (`IN` or `AE`) and each workspace uses its own currency (INR or AED); no currency conversion or combined totals are shown. Run the updated `schema.sql` in the Supabase SQL Editor before deploying this version. Existing records default to India (`IN`); review and reassign any UAE records in Supabase before using the new country switch.
+Edit `config.js` and replace the placeholders:
 
-## Reminders
+```js
+window.CONFIG = {
+  SUPABASE_URL: 'https://YOUR_PROJECT.supabase.co',
+  SUPABASE_ANON_KEY: 'YOUR_SUPABASE_ANON_KEY'
+};
+```
 
-You can create dated reminders for EMIs, bills, transfers, and other payments. Opt in to browser notifications from the Reminders page. Notifications are checked while the app is open; this version does not send alerts while the browser/app is fully closed, and it does not execute payments.
+The Supabase anon key is intended for browser use with correct RLS policies. Never put a Supabase service-role key in this file.
 
+## 3. Configure Google Gemini AI
 
-## AI Coach troubleshooting
+1. Create an API key in Google AI Studio: https://aistudio.google.com/app/apikey
+2. In your Vercel project, open **Settings → Environment Variables** and add:
+   - `GEMINI_API_KEY` = your Google Gemini API key
+   - `SUPABASE_URL` = the same Supabase project URL
+   - `SUPABASE_ANON_KEY` = the same Supabase anon/public key
+   - Optional: `GEMINI_MODEL` = `gemini-2.5-flash` (default)
+3. Redeploy after adding or changing environment variables.
 
-The AI Coach now reports configuration/API errors instead of silently displaying “No answer from the AI model.” In Vercel, confirm `AI_GATEWAY_API_KEY`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` are set for the deployment environment, then redeploy. Check the Vercel function logs if AI Gateway reports a key, credit, model-access, or request error. Simple balance questions are answered directly from the currently selected workspace's saved account records and do not require an AI model; they are not live bank balances.
+The Gemini key is only read by `/api/advice.js` on the server. Do not add it to `config.js`, HTML, or a public repository. Review Google's current API pricing, quota, and data terms before use. Gemini responses are advice only; the app does not connect to banks or execute payments.
 
+## 4. Deploy to Vercel
 
-## Vercel AI Gateway Money Coach
+1. Put the contents of this folder in a private Git repository.
+2. Import that repository into https://vercel.com.
+3. Add the environment variables above and deploy.
+4. Open the deployed URL, sign in, then choose **Manage India** or **Manage UAE**.
+5. On mobile, use the browser's **Add to Home Screen** option to install the PWA shell.
 
-The AI Coach calls Vercel AI Gateway from the server-side `/api/advice` function. Set `AI_GATEWAY_API_KEY` in Vercel Environment Variables. You can optionally set `AI_GATEWAY_MODEL` to a model ID currently listed in the Vercel AI Gateway catalogue. Do not put the gateway key in `config.js` or frontend code.
+The included `api/advice.js` is a Vercel serverless function. The app expects the `/api/advice` endpoint to be deployed with it.
 
-The app sends the currently selected workspace's saved account balances, loans and EMI due days, open reminders with due dates, budgets, monthly spending categories, and recent transactions to the AI endpoint after checking the Supabase login session. India and UAE records remain separated. Balance answers are based on records entered in this app, not a live bank connection. The AI Coach only advises; it does not create reminders or make payments.
+## Feature notes and limitations
 
-For EMI dates, loan records use the recurring `due_day` field. For specific reminder dates, add a due date in the Reminders tab. Keep your gateway API key private and review model pricing/credits in Vercel before deploying.
+- **Recorded balances only:** balances are what you enter in PocketPlan, not live bank balances.
+- **Net worth:** the app calculates tracked cash/bank + manually entered assets − tracked loans − outstanding borrowed-from-people amounts. Add all relevant assets/liabilities for a more complete estimate.
+- **30-day estimate:** a simple estimate based on the selected month's income, expenses, EMIs, and current recorded account balances; it does not know future variable spending or unentered income.
+- **Recurring reminders:** when you mark a dated repeating reminder complete, the next occurrence is created. This does not automatically create a transaction or pay a bill.
+- **Notifications:** browser notifications are checked while the app is open. No server-side push notifications are sent when the browser is closed.
+- **Voice entry:** uses the browser's speech recognition when supported (commonly Chrome/Edge). Check the captured description and amount before saving.
+- **CSV/PDF:** CSV export downloads transaction records. Print / Save PDF uses your browser's print dialog.
+- **Security:** use a strong unique password, keep Vercel environment variables private, enable RLS, and do not deploy a public signup flow unless you intend to support multiple users.
+- **Financial advice:** Gemini may make mistakes. Verify important decisions and never share bank passwords, card PINs, or other secrets with the AI Coach.
 
+## Troubleshooting
 
-## v3: Borrowed, account-linked payments, smoother app
-
-**Run the updated `schema.sql` in Supabase > SQL Editor first** (safe to run again), then redeploy.
-
-- **Transactions**: choose Income, Expense or **Borrowed**. Every entry now asks which account it goes into or comes out of, and the account balance updates automatically (income and borrowed add, expenses subtract). Deleting an entry reverses the balance change.
-- **Borrowed tab**: type a person's name once; the same name (any capitalisation) always adds to that person. Each person shows total borrowed, repaid and what is still owed. Use **Settle amount** (or **Settle full**) and pick the account the money comes from; that account is reduced and the person's balance goes down.
-- **Loans**: each loan has **Pay now** with an amount and the account to pay from. The account and the loan balance both go down, and the payment is saved in Transactions.
-- **Reminders**: all active loans appear with their next EMI date (a loan paid for the month moves to next month), plus the people you owe, plus your own reminders. Loans and dated reminders also appear under "Due in the next 7 days" on Overview.
-- **Smoother**: saving no longer reloads everything; the screen updates in place, keeps what you typed, and only one action runs at a time. The app no longer reloads when you switch browser tabs or when the login token refreshes.
+- **Workspace fails to load:** confirm the full `schema.sql` ran successfully and that the Supabase URL/key are correct.
+- **Gemini error:** check `GEMINI_API_KEY`, `GEMINI_MODEL`, Google AI Studio quota/model access, and Vercel function logs. Redeploy after environment-variable changes.
+- **Budget save conflict:** the updated schema uses a country-aware unique key; rerun the updated schema if the database reports a conflict-target error.
+- **No live bank data:** this is a manual finance tracker and does not connect to UPI, bank accounts, or payment rails.

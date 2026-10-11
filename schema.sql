@@ -47,3 +47,38 @@ alter table entries add column if not exists account_id uuid references accounts
 alter table entries add column if not exists debt_id uuid references debts(id) on delete set null;
 alter table entries add column if not exists person text;
 create index if not exists entries_person_idx on entries(user_id, country, lower(person));
+
+-- PocketPlan extended planning features: manually tracked assets and savings goals.
+create table if not exists assets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid(),
+  country text not null default 'IN' check (country in ('IN','AE')),
+  name text not null,
+  asset_type text not null default 'other',
+  value numeric not null default 0 check (value >= 0),
+  currency text not null default 'INR',
+  created_at timestamptz not null default now()
+);
+create table if not exists goals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid(),
+  country text not null default 'IN' check (country in ('IN','AE')),
+  name text not null,
+  target numeric not null check (target > 0),
+  saved numeric not null default 0 check (saved >= 0),
+  deadline date,
+  currency text not null default 'INR',
+  created_at timestamptz not null default now()
+);
+do $$ declare t text; begin
+  foreach t in array array['assets','goals'] loop
+    execute format('alter table %I enable row level security', t);
+    execute format('drop policy if exists own on %I', t);
+    execute format('create policy own on %I for all using (user_id=auth.uid()) with check (user_id=auth.uid())', t);
+  end loop;
+end $$;
+create index if not exists assets_user_country_idx on assets(user_id,country);
+create index if not exists goals_user_country_idx on goals(user_id,country);
+
+-- Optional reminder recurrence (one-time reminders remain the default).
+alter table todos add column if not exists repeat_every text not null default 'none' check (repeat_every in ('none','weekly','monthly','yearly'));
