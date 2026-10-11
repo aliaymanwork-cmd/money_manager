@@ -22,15 +22,26 @@ export default async function handler(req, res) {
     const response = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
-      body: JSON.stringify({ model, input: prompt, system_instruction: system, store: false, generation_config: { temperature: 0.25, max_output_tokens: 1500 } })
+      body: JSON.stringify({
+        model,
+        input: prompt,
+        system_instruction: system,
+        store: false,
+        generation_config: { thinking_level: 'medium', max_output_tokens: 1500 }
+      })
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       const detail = payload?.error?.message || payload?.message || `HTTP ${response.status}`;
+      if (response.status === 404 && /model|not found|not available/i.test(String(detail))) {
+        return res.status(502).json({ error: `Gemini model "${model}" was not found or is not enabled for this API key. Confirm GEMINI_MODEL is set to gemini-3.8-flash in Vercel, verify the key has Gemini API access, then redeploy. Original response: ${String(detail).slice(0, 220)}` });
+      }
       const hint = response.status === 401 || response.status === 403 ? ' Check that GEMINI_API_KEY is valid and has Gemini API access.' : response.status === 429 ? ' Gemini quota or rate limit may have been reached.' : '';
       return res.status(502).json({ error: `Gemini Interactions API failed (${response.status}): ${String(detail).slice(0, 350)}.${hint}` });
     }
-    const answer = (payload?.steps || []).filter(step => step?.type === 'model_output').flatMap(step => step?.content || []).filter(part => part?.type === 'text').map(part => part.text || '').join('\n').trim() || String(payload?.output_text || '').trim();
+    const answer = String(payload?.output_text || '').trim()
+      || (payload?.output || []).flatMap(item => item?.content || []).filter(part => part?.type === 'text').map(part => part.text || '').join('\n').trim()
+      || (payload?.steps || []).filter(step => step?.type === 'model_output').flatMap(step => step?.content || []).filter(part => part?.type === 'text').map(part => part.text || '').join('\n').trim();
     if (!answer) return res.status(502).json({ error: `Gemini returned no text (status: ${payload?.status || 'unknown'}). Check model access and quota.` });
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({ text: answer });

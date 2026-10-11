@@ -58,13 +58,13 @@ The Gemini key is only read by `/api/advice.js` on the server. Do not add it to 
 4. Open the deployed URL, sign in, then choose **Manage India** or **Manage UAE**.
 5. On mobile, use the browser's **Add to Home Screen** option to install the PWA shell.
 
-The included `api/advice.js` is a Vercel serverless function. It calls `https://generativelanguage.googleapis.com/v1beta/interactions` with the `x-goog-api-key` header. The app expects `/api/advice` to be deployed with it. After changing the model/environment variables, redeploy Vercel.
+The included `api/advice.js` is a Vercel serverless function. It calls `https://generativelanguage.googleapis.com/v1beta/interactions` with the `x-goog-api-key` header. The app expects `/api/advice` to be deployed with it. The endpoint defaults to `gemini-3.8-flash`, uses the Interactions API request format, and avoids legacy temperature settings that are not supported by Gemini 3.x. After changing the model/environment variables, redeploy Vercel.
 
 ## Predefined categories and interface
 
 The transaction, monthly-budget, and scheduled-cash-flow forms include predefined category groups for Housing & Home, Utilities & Bills, Food & Dining, Transportation & Travel, Shopping & Lifestyle, Entertainment & Subscriptions, Health & Wellness, Education & Self-Improvement, Financial & Investments, and Miscellaneous & Others. Income transactions also include Salary, Freelance / Side Income, Business Income, Interest / Dividends, Refunds, and Other Income. Categories are stored with their group prefix to keep similarly named items distinguishable in reports. Existing historical category labels are retained.
 
-The interface uses a responsive dark navy/teal theme, mobile bottom navigation, and a redesigned AI Coach with suggested questions.
+The interface uses a premium responsive finance-dashboard design: crisp navy/teal palette, restrained motion, Lucide line icons in the navigation, responsive cards, polished country workspaces, charts, and a redesigned AI Coach with suggested questions. The interface is designed to feel like a modern finance product rather than a playful cartoon theme.
 
 ## Feature notes and limitations
 

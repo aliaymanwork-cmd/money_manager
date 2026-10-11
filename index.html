@@ -1,9 +1,10 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>PocketPlan — Personal Finance</title>
+<title>PocketPlan — Personal Finance OS</title>
 <link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#080d18"><link rel="apple-touch-icon" href="/icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><script src="/config.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
 <style>
 :root{color-scheme:light;--bg:#f7f4ec;--card:#fffdf8;--ink:#24352d;--mute:#778078;--ok:#34745b;--ok-dark:#285d49;--bad:#c95d57;--line:#e9e5da;--soft:#eaf2e9;--shadow:0 12px 35px rgba(47,66,48,.07)}
 
@@ -124,6 +125,96 @@ button{background:linear-gradient(135deg,#27bcae,#43d5c4);color:#06151b;border-r
 
 .ai-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:8px 4px 18px;grid-column:1/-1}.ai-heading .eyebrow{margin-bottom:8px}.ai-heading h1{margin:0 0 7px}.ai-orb{width:76px;height:76px;flex:0 0 76px;border-radius:50%;display:grid;place-items:center;font-size:32px;color:#eaffff;background:radial-gradient(circle at 32% 25%,#9cf8ff,#248ee9 35%,#252f84 70%,#11172f);box-shadow:0 0 34px rgba(45,174,255,.28),inset 0 0 20px #ffffff30;border:1px solid #5bbde8}.ai-welcome{grid-column:1/-1;background:radial-gradient(ellipse at 100% 0,rgba(28,128,179,.14),transparent 42%),linear-gradient(145deg,#111e32,#0e1728)}.ai-kicker{font-size:10px;letter-spacing:1.7px;font-weight:800;color:#58ddce;margin-bottom:8px}.ai-welcome h2{font-size:23px;letter-spacing:-.5px;margin-bottom:5px}.ai-prompts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0 22px}.ai-prompt{display:grid;grid-template-columns:34px 1fr;grid-template-rows:auto auto;column-gap:10px;align-items:center;text-align:left;white-space:normal;background:#111e30!important;color:#eaf2ff!important;border:1px solid #2b3d57!important;border-radius:13px;padding:13px!important;box-shadow:none!important}.ai-prompt:hover{background:#172b42!important;border-color:#3b6a7c!important}.ai-prompt span{grid-row:1/3;display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:#153b4a;color:#57dfce;font-size:20px}.ai-prompt b{font-size:12px}.ai-prompt small{font-size:10px;color:#8fa2bc;font-weight:500;margin-top:2px}.ai-send-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px}.ai-send-row button{min-width:130px}.ai-answer{grid-column:1/-1;min-height:150px}.ai-answer-head{display:flex;align-items:center;gap:10px;border-bottom:1px solid #26364e;padding-bottom:13px;margin-bottom:12px}.ai-answer-icon{display:grid;place-items:center;width:35px;height:35px;border-radius:11px;background:#163847;color:#58dfcf;font-size:20px}.ai-answer pre{line-height:1.8;color:#dce8f8}.ai-welcome label{display:block;margin:6px 0}
 @media(max-width:650px){.ai-heading{padding:5px 2px 12px}.ai-orb{width:58px;height:58px;flex-basis:58px;font-size:25px}.ai-prompts{gap:8px}.ai-prompt{padding:10px!important;grid-template-columns:28px 1fr;column-gap:7px}.ai-prompt span{width:27px;height:27px}.ai-prompt b{font-size:11px}.ai-prompt small{font-size:9px}.ai-send-row{align-items:flex-start;flex-direction:column}.ai-send-row button{width:100%}}
+
+
+/* POCKETPLAN — premium product design system */
+:root{
+ --bg:#f4f7fb;--card:#ffffff;--ink:#172438;--mute:#718096;--ok:#087f8c;--ok-dark:#066571;
+ --bad:#d94b64;--line:#e4eaf2;--soft:#e5f7f5;--shadow:0 8px 28px rgba(26,44,74,.055);
+ --accent:#18b6a4;--navy:#0b1728;
+}
+html{background:var(--bg)}
+body{font-family:Inter,Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(ellipse at 10% -10%,rgba(39,174,164,.09),transparent 32%),var(--bg);color:var(--ink);letter-spacing:-.01em}
+main{max-width:1320px;padding:30px clamp(16px,3vw,40px) 44px}
+h1{font-size:clamp(25px,2.3vw,34px);letter-spacing:-1.1px;font-weight:800}
+h2{font-size:16px;letter-spacing:-.35px;font-weight:800}
+#app{align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:23px;margin:12px 0;box-shadow:var(--shadow);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.card:hover{transform:translateY(-1px);border-color:#d5e1ec;box-shadow:0 14px 34px rgba(26,44,74,.075)}
+.hero{background:linear-gradient(115deg,#10243b 0%,#124b60 56%,#087f8c 100%);border:1px solid rgba(255,255,255,.1);border-radius:24px;box-shadow:0 18px 40px rgba(9,84,101,.15);padding:clamp(24px,3vw,36px)}
+.hero:after{content:"";position:absolute;width:240px;height:240px;right:-90px;top:-100px;border-radius:50%;border:1px solid #ffffff1f;box-shadow:0 0 0 28px #ffffff08,0 0 0 58px #ffffff06;pointer-events:none}
+.hero .big{font-size:clamp(34px,4vw,48px);letter-spacing:-1.8px;font-variant-numeric:tabular-nums}
+.hero .row{border-color:#ffffff1c}
+input,select,textarea{background:#f8fafd!important;color:#172438!important;border:1px solid #dce5ef!important;border-radius:12px!important;padding:12px 14px!important;transition:border .18s,box-shadow .18s}
+input:focus,select:focus,textarea:focus{border-color:#19a99d!important;box-shadow:0 0 0 4px #18b6a41c!important}
+input::placeholder,textarea::placeholder{color:#9aa8ba}
+button{background:linear-gradient(135deg,#0b8e96,#16b6a5);color:#fff;border-radius:12px;padding:11px 16px;box-shadow:0 4px 10px #0b8e961a;font-weight:750;letter-spacing:0;transition:transform .16s,filter .16s,box-shadow .16s}
+button:hover{background:linear-gradient(135deg,#087f8c,#0ea99a);filter:saturate(1.06);transform:translateY(-1px);box-shadow:0 7px 16px #0b8e9628}
+button:disabled{opacity:.55;cursor:wait;transform:none}
+button.secondary-button{background:#eef3f8;color:#31445d;border:1px solid #dfe7f0;box-shadow:none}
+button.secondary-button:hover{background:#e4edf5}
+button.ghost{background:transparent;color:#7b8ba1;box-shadow:none;border:1px solid transparent}
+button.ghost:hover{background:#fff0f2;color:#c63e58}
+#nav{position:sticky;top:0;z-index:40;gap:5px;padding:10px max(20px,calc((100vw - 1240px)/2));background:rgba(255,255,255,.88);border-bottom:1px solid #e2e9f2;box-shadow:0 7px 22px #182f4b0a;backdrop-filter:blur(18px)}
+#nav button{font-size:12px;padding:10px 12px;color:#73839a;border:1px solid transparent;border-radius:11px}
+#nav button.on{color:#087f8c;background:#e7f7f5;border-color:#c8eeea;box-shadow:none}
+#nav button:first-child{color:#172438;font-size:14px;font-weight:850}
+.row{border-color:#e9eef4;padding:12px 0}
+.mute{color:#75849a;font-size:12px}
+.ok{color:#078b7f}.bad{color:#d94b64}
+.bar{height:8px;background:#edf1f6;border-radius:99px}.bar i{background:linear-gradient(90deg,#12a89d,#56d6bb);border-radius:99px}
+.pill{background:#f5f8fb;border-color:#e1e8f0}.pill button.on{background:#087f8c;color:white}
+.welcome{max-width:1000px;margin:clamp(32px,8vh,90px) auto;padding:clamp(12px,3vw,36px)}
+.welcome:before{content:none}
+.welcome .eyebrow,.eyebrow{color:#078b8b;letter-spacing:1.7px}
+.welcome h1{font-size:clamp(40px,6vw,68px);line-height:1.04;letter-spacing:-2.5px}
+.welcome h1 span{background:linear-gradient(100deg,#087f8c,#18b6a4);background-clip:text;-webkit-background-clip:text;color:transparent}
+.lead{color:#73839a;line-height:1.8}
+.country-grid{gap:18px;margin-top:28px}
+.country-card{min-height:130px;padding:25px;background:linear-gradient(145deg,#fff,#f9fcff);border:1px solid #dfe8f1;border-radius:20px;box-shadow:0 12px 28px #1838580a;color:#172438;position:relative;overflow:hidden}
+.country-card:after{content:"";position:absolute;inset:auto -30px -60px auto;width:150px;height:150px;border-radius:50%;background:#e8f7f5;z-index:0}
+.country-card>*{position:relative;z-index:1}
+.country-card:hover{background:#fff;color:#172438;border-color:#a9e3dc;box-shadow:0 18px 36px #18385812;transform:translateY(-3px)}
+.country-card b{font-size:17px}.country-card small{font-size:12px;color:#74849a}.flag{font-size:32px}.arrow{color:#078b8b;font-size:24px}
+.privacy-note{color:#7e8ca0}
+.login-shell{max-width:1080px;min-height:600px;grid-template-columns:1fr 1fr;border:1px solid #e1e8f1;border-radius:26px;box-shadow:0 24px 70px #172b4612;background:#fff}
+.login-art{background:radial-gradient(circle at 70% 20%,#d5f6ef,transparent 34%),linear-gradient(145deg,#e8f3ff,#f5fbff 52%,#d9f4f0);min-height:600px}
+.login-art:before,.login-art:after{background:#ffffff70}
+.money-mascot{transform:scale(.92)}
+.login-panel{padding:clamp(28px,4vw,56px);background:#fff!important;color:#172438}
+.login-panel h1{font-size:clamp(32px,3.5vw,44px);letter-spacing:-1.8px}
+.brand-mark{color:#172438;font-size:20px}.login-button{width:100%;margin-top:10px}
+#toast{background:#14263b;color:#fff;border:1px solid #263e58;border-radius:12px;box-shadow:0 12px 32px #0a172933}
+.ai-heading{padding:10px 4px 18px}
+.ai-orb{background:radial-gradient(circle at 30% 25%,#a3fff0,#20b7ad 38%,#087f8c 72%,#0d2943);box-shadow:0 0 0 8px #18b6a411,0 12px 28px #0a87932a;border:1px solid #9de9df}
+.ai-welcome{background:radial-gradient(ellipse at 100% 0,#1a8a941c,transparent 42%),linear-gradient(145deg,#fff,#f8fbff);border-color:#dfe9f1}
+.ai-kicker{color:#078b8b}
+.ai-welcome h2{font-size:24px}
+.ai-prompt{background:#fff!important;color:#21354b!important;border:1px solid #dfe8f1!important;box-shadow:0 5px 16px #18385808!important;border-radius:14px}
+.ai-prompt:hover{background:#f5fbfb!important;border-color:#9bdfd7!important}
+.ai-prompt span{background:#e5f7f4;color:#078b8b;border-radius:10px}
+.ai-prompt small{color:#75849a}
+.ai-answer-head{border-color:#e5ecf3}
+.ai-answer-icon{background:#e4f7f4;color:#078b8b}
+.ai-answer pre{color:#273950;line-height:1.85}
+.tag{background:#e7f7f5;color:#087f8c}
+@keyframes premiumIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#app.anim>*{animation:premiumIn .28s ease both}
+#app.anim>*:nth-child(2){animation-delay:.025s}#app.anim>*:nth-child(3){animation-delay:.05s}#app.anim>*:nth-child(4){animation-delay:.075s}
+#nav button{display:inline-flex;align-items:center;gap:7px}#nav button svg{width:15px;height:15px;stroke-width:1.9;flex:0 0 auto}#nav button.on svg{stroke-width:2.2}
+@media(min-width:900px){#app{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 22px}#app>.card{margin:0 0 10px}}
+@media(max-width:650px){
+ main{padding:18px 13px 30px}.card{padding:18px;border-radius:17px;margin:10px 0}
+ #nav{background:rgba(255,255,255,.96);border-top:1px solid #e2e9f2;box-shadow:0 -8px 24px #182f4b0c}
+ #nav button{font-size:10px;padding:10px 8px}
+ .country-grid{grid-template-columns:1fr}.country-card{min-height:100px;padding:20px}
+ .welcome h1{font-size:clamp(39px,11vw,55px);letter-spacing:-1.8px}
+ .login-shell{grid-template-columns:1fr;min-height:0;margin:16px auto}.login-art{display:none}.login-panel{padding:28px 22px}
+ .ai-prompts{grid-template-columns:1fr}.ai-prompt{grid-template-columns:34px 1fr;min-height:64px}
+ .ai-heading{gap:12px}.ai-orb{width:56px;height:56px;flex-basis:56px;font-size:24px}
+ .hero{padding:22px}.hero .big{font-size:34px}
+}
+@media(prefers-reduced-motion:reduce){#app.anim>*{animation:none!important}}
 
 </style></head><body><main id="app"></main><nav id="nav" hidden></nav><div id="toast" role="status" aria-live="polite"></div>
 <script>
@@ -255,7 +346,7 @@ function render(o={}){
   if(!S.country){nav.hidden=true;a.classList.add('anim');a.innerHTML=`<div class="welcome"><div class="eyebrow">YOUR MONEY, WITH A PLAN</div><h1>Make your money<br><span>work for you.</span></h1><p class="lead">A calmer way to track accounts, get debt-free, and stay ahead of every payment.</p><div class="country-grid"><button class="country-card" onclick="chooseCountry('IN')"><span class="flag">🇮🇳</span><span><b>Manage India</b><small>INR · Indian accounts & loans</small></span><span class="arrow">↗</span></button><button class="country-card" onclick="chooseCountry('AE')"><span class="flag">🇦🇪</span><span><b>Manage UAE</b><small>AED · UAE accounts & loans</small></span><span class="arrow">↗</span></button></div><p class="privacy-note">✦ Separate records. No currency conversion. Your financial picture stays in its own lane.</p></div>`;return}
   const keep=(o.tab||o.clear)?null:snap();
   nav.hidden=false;
-  if(o.tab||!nav.children.length){nav.innerHTML=[['home','Overview'],['money','Transactions'],['acc','Accounts'],['debts','Loans'],['borrow','People & Debts'],['todo','Bills & Reminders'],['plan','Plan & Goals'],['reports','Reports'],['settings','Settings'],['ai','AI Coach']].map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="go('${k}')">${l}</button>`).join('');const on=nav.querySelector('.on');if(on&&on.scrollIntoView)on.scrollIntoView({inline:'center',block:'nearest'})}
+  if(o.tab||!nav.children.length){nav.innerHTML=[['home','Overview','layout-dashboard'],['money','Transactions','arrow-left-right'],['acc','Accounts','wallet'],['debts','Loans','landmark'],['borrow','People & Debts','users'],['todo','Bills & Reminders','calendar-clock'],['plan','Plan & Goals','target'],['reports','Reports','chart-no-axes-combined'],['settings','Settings','settings-2'],['ai','AI Coach','sparkles']].map(([k,l,ic])=>`<button class="${S.tab==k?'on':''}" onclick="go('${k}')"><i data-lucide="${ic}" aria-hidden="true"></i><span>${l}</span></button>`).join('');if(window.lucide)lucide.createIcons();const on=nav.querySelector('.on');if(on&&on.scrollIntoView)on.scrollIntoView({inline:'center',block:'nearest'})}
   a.classList.toggle('anim',!!o.tab);
   const mon=`<input type="month" value="${S.month}" onchange="S.month=this.value;render()">`;
   if(S.tab=='home'){const p0=payoff(0),p1=payoff(S.extra),up=upcoming(7),have=sumC(S.accounts,'balance'),owed=owedTotal(),lent=lentPeople().reduce((n,p)=>n+Math.max(0,p.out),0);
