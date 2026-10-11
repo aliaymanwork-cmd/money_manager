@@ -82,3 +82,33 @@ create index if not exists goals_user_country_idx on goals(user_id,country);
 
 -- Optional reminder recurrence (one-time reminders remain the default).
 alter table todos add column if not exists repeat_every text not null default 'none' check (repeat_every in ('none','weekly','monthly','yearly'));
+
+
+-- v4: receipt attachments, budget rollover, and scheduled future cash flows.
+alter table entries add column if not exists receipt_data text;
+alter table budgets add column if not exists carryover boolean not null default false;
+create table if not exists schedules (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid(),
+  country text not null default 'IN' check (country in ('IN','AE')),
+  title text not null,
+  kind text not null check (kind in ('income','expense')),
+  amount numeric not null check (amount > 0),
+  currency text not null default 'INR',
+  category text not null default 'Scheduled',
+  next_date date not null,
+  repeat_every text not null default 'monthly' check (repeat_every in ('none','weekly','monthly','yearly')),
+  account_id uuid references accounts(id) on delete set null,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+alter table schedules enable row level security;
+drop policy if exists own on schedules;
+create policy own on schedules for all using (user_id=auth.uid()) with check (user_id=auth.uid());
+create index if not exists schedules_user_country_date_idx on schedules(user_id,country,next_date) where active=true;
+
+-- v5: person-to-person lending and settlement metadata.
+alter table entries add column if not exists payment_method text;
+alter table entries add column if not exists notes text;
+alter table entries drop constraint if exists entries_kind_check;
+alter table entries add constraint entries_kind_check check (kind in ('income','expense','borrowed','settled','loanpay','lent','received'));

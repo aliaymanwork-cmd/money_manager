@@ -7,13 +7,13 @@ A responsive personal finance web app with separate India (INR) and UAE (AED) wo
 - Password-protected sign-in using Supabase Auth; row-level security for user-owned data.
 - India and UAE workspaces kept separate.
 - Income, expenses, borrowed money, account-linked transactions, and CSV export.
-- Person-wise borrowed-money tracking with partial/full settlements and history.
+- Person-wise borrowed-money tracking with partial/full settlements, date/method/notes, full history, plus separate person-wise lending and repayments received.
 - Loans/EMIs, payoff estimates, payments, due dates, reminders, and repeating weekly/monthly/yearly reminders.
-- Monthly category budgets with 70%, 90%, and over-budget indicators.
+- Monthly category budgets with 70%, 90%, and over-budget indicators plus optional unused-budget rollover.
 - Bank/cash accounts and balances.
-- Financial planning page with tracked net worth, manual assets/investments, savings goals, progress bars, and a simple 30-day cash-flow estimate.
-- Six-month income/expense trend, print/save-as-PDF, and quick transaction voice entry on supported browsers.
-- Gemini AI Coach uses the selected workspace's saved financial snapshot for advice. API key remains server-side.
+- Financial planning page with tracked net worth, manual assets/investments, savings goals and contributions, and 7/30/90-day cash-flow estimates using scheduled cash flows and recent average expenses.
+- Six-month reports, category spending breakdown, CSV export, JSON workspace backup/restore, print/save-as-PDF, voice entry, duplicate warnings, and optional receipt photos (JPEG/PNG/WebP/GIF up to 1 MB).
+- Gemini AI Coach uses the selected workspace's recorded financial snapshot and scheduled cash flows. It uses Google’s Interactions API with `gemini-3.8-flash`; the API key remains server-side. `store: false` is set for the interaction request.
 - Responsive mobile layout and installable PWA shell.
 
 ## 1. Create the Supabase project
@@ -45,7 +45,7 @@ The Supabase anon key is intended for browser use with correct RLS policies. Nev
    - `GEMINI_API_KEY` = your Google Gemini API key
    - `SUPABASE_URL` = the same Supabase project URL
    - `SUPABASE_ANON_KEY` = the same Supabase anon/public key
-   - Optional: `GEMINI_MODEL` = `gemini-2.5-flash` (default)
+   - Optional: `GEMINI_MODEL` = `gemini-3.8-flash` (default; current Interactions API model)
 3. Redeploy after adding or changing environment variables.
 
 The Gemini key is only read by `/api/advice.js` on the server. Do not add it to `config.js`, HTML, or a public repository. Review Google's current API pricing, quota, and data terms before use. Gemini responses are advice only; the app does not connect to banks or execute payments.
@@ -58,23 +58,29 @@ The Gemini key is only read by `/api/advice.js` on the server. Do not add it to 
 4. Open the deployed URL, sign in, then choose **Manage India** or **Manage UAE**.
 5. On mobile, use the browser's **Add to Home Screen** option to install the PWA shell.
 
-The included `api/advice.js` is a Vercel serverless function. The app expects the `/api/advice` endpoint to be deployed with it.
+The included `api/advice.js` is a Vercel serverless function. It calls `https://generativelanguage.googleapis.com/v1beta/interactions` with the `x-goog-api-key` header. The app expects `/api/advice` to be deployed with it. After changing the model/environment variables, redeploy Vercel.
+
+## Predefined categories and interface
+
+The transaction, monthly-budget, and scheduled-cash-flow forms include predefined category groups for Housing & Home, Utilities & Bills, Food & Dining, Transportation & Travel, Shopping & Lifestyle, Entertainment & Subscriptions, Health & Wellness, Education & Self-Improvement, Financial & Investments, and Miscellaneous & Others. Income transactions also include Salary, Freelance / Side Income, Business Income, Interest / Dividends, Refunds, and Other Income. Categories are stored with their group prefix to keep similarly named items distinguishable in reports. Existing historical category labels are retained.
+
+The interface uses a responsive dark navy/teal theme, mobile bottom navigation, and a redesigned AI Coach with suggested questions.
 
 ## Feature notes and limitations
 
 - **Recorded balances only:** balances are what you enter in PocketPlan, not live bank balances.
-- **Net worth:** the app calculates tracked cash/bank + manually entered assets − tracked loans − outstanding borrowed-from-people amounts. Add all relevant assets/liabilities for a more complete estimate.
-- **30-day estimate:** a simple estimate based on the selected month's income, expenses, EMIs, and current recorded account balances; it does not know future variable spending or unentered income.
-- **Recurring reminders:** when you mark a dated repeating reminder complete, the next occurrence is created. This does not automatically create a transaction or pay a bill.
+- **Net worth:** the app calculates tracked cash/bank + manually entered assets + outstanding money lent to people − tracked loans − outstanding borrowed-from-people amounts. Add all relevant assets/liabilities for a more complete estimate.
+- **Forecasts:** 7/30/90-day estimates combine active scheduled cash flows, EMI dates, and recent average expenses. They are approximations and cannot know unentered income or future variable spending.
+- **Recurring reminders:** when you mark a dated repeating reminder complete, the next occurrence is created. Scheduled cash-flow items can be marked paid/received; this creates a transaction, updates the linked account when selected, and advances or deactivates the schedule. This does not initiate an actual bank payment.
 - **Notifications:** browser notifications are checked while the app is open. No server-side push notifications are sent when the browser is closed.
 - **Voice entry:** uses the browser's speech recognition when supported (commonly Chrome/Edge). Check the captured description and amount before saving.
-- **CSV/PDF:** CSV export downloads transaction records. Print / Save PDF uses your browser's print dialog.
-- **Security:** use a strong unique password, keep Vercel environment variables private, enable RLS, and do not deploy a public signup flow unless you intend to support multiple users.
+- **Excel/CSV/PDF/backup:** Excel export is an Excel-compatible HTML spreadsheet with an `.xls` extension; CSV export downloads transactions. JSON backup includes the current country workspace and can be restored into the same signed-in account and country. Restore upserts matching IDs and leaves records absent from the backup untouched. Print / Save PDF uses the browser print dialog.
+- **Security:** use a strong unique password, keep Vercel environment variables private, enable RLS, and do not deploy a public signup flow unless you intend to support multiple users. Privacy mode only hides displayed amounts. The optional local PIN screen is a convenience lock, not a replacement for authentication or device security; it can be bypassed by someone with developer-tools access. Biometric authentication is not implemented. Receipt images are stored as data URLs in your private database rows, so use small, non-sensitive receipts. Browser notifications require the app to be open; there is no server-side push service.
 - **Financial advice:** Gemini may make mistakes. Verify important decisions and never share bank passwords, card PINs, or other secrets with the AI Coach.
 
 ## Troubleshooting
 
 - **Workspace fails to load:** confirm the full `schema.sql` ran successfully and that the Supabase URL/key are correct.
-- **Gemini error:** check `GEMINI_API_KEY`, `GEMINI_MODEL`, Google AI Studio quota/model access, and Vercel function logs. Redeploy after environment-variable changes.
+- **Gemini error:** check `GEMINI_API_KEY`, set `GEMINI_MODEL=gemini-3.8-flash`, verify model access/quota, inspect Vercel function logs, and redeploy after environment-variable changes. This build uses the Interactions API rather than the retired `generateContent` endpoint for the configured model.
 - **Budget save conflict:** the updated schema uses a country-aware unique key; rerun the updated schema if the database reports a conflict-target error.
 - **No live bank data:** this is a manual finance tracker and does not connect to UPI, bank accounts, or payment rails.
