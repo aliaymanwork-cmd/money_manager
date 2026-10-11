@@ -1,13 +1,13 @@
 # PocketPlan upgrade notes
 
-This build fixes the Gemini model error by using Google's Gemini Interactions API with `gemini-3.8-flash` by default.
+This build uses Groq (`llama-3.3-70b-versatile`) for the AI Coach.
 
 ## Before deploying
 
 1. Back up your existing Supabase data.
 2. Run the entire updated `schema.sql` in the Supabase SQL Editor. It adds `schedules`, budget rollover, receipt data, settlement metadata, and `lent`/`received` transaction types. Existing records are retained.
-3. In Vercel Environment Variables, set `GEMINI_API_KEY`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY`. Set `GEMINI_MODEL=gemini-3.8-flash` or remove `GEMINI_MODEL` to use the code default.
-4. Deploy/redeploy the project. Do not add the Gemini key to `config.js` or commit it to Git.
+3. In Vercel Environment Variables, set `GROQ_API_KEY`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY`. Set `GROQ_MODEL=llama-3.3-70b-versatile` or remove `GROQ_MODEL` to use the code default.
+4. Deploy/redeploy the project. Do not add the Groq key to `config.js` or commit it to Git.
 5. Test login, India/UAE separation, add/delete transactions, borrowed/lent settlement, receipt attachment, budgets, scheduled items, backup/restore, and AI Coach.
 
 ## Feature notes
@@ -25,3 +25,8 @@ This build fixes the Gemini model error by using Google's Gemini Interactions AP
 - Mobile: bottom tab bar with a **More** sheet, quick-add button on Overview, 16px form fields (no iOS zoom), larger tap targets, safe-area support, automatic dark mode.
 - Desktop: left sidebar navigation.
 - Redeploy and reload once; the service-worker cache was bumped to `v5` so phones pick up the new design.
+
+## AI provider: Groq
+
+- `api/advice.js` now calls Groq (`GROQ_API_KEY`, `GROQ_MODEL=llama-3.3-70b-versatile`, optional `GROQ_FALLBACK_MODEL`). Remove the old `GEMINI_*` variables in Vercel and redeploy.
+- Balance questions (e.g. "what is my account balance") are answered instantly from your saved accounts, with a per-account breakdown, without calling the AI.

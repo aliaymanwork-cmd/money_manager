@@ -1,6 +1,6 @@
 # PocketPlan — Personal Finance Planner
 
-A responsive personal finance web app with separate India (INR) and UAE (AED) workspaces. Built with vanilla HTML/CSS/JavaScript, Supabase Auth/Postgres, Vercel serverless functions, and Google Gemini AI.
+A responsive personal finance web app with separate India (INR) and UAE (AED) workspaces. Built with vanilla HTML/CSS/JavaScript, Supabase Auth/Postgres, Vercel serverless functions, and Groq AI.
 
 ## Features
 
@@ -13,7 +13,7 @@ A responsive personal finance web app with separate India (INR) and UAE (AED) wo
 - Bank/cash accounts and balances.
 - Financial planning page with tracked net worth, manual assets/investments, savings goals and contributions, and 7/30/90-day cash-flow estimates using scheduled cash flows and recent average expenses.
 - Six-month reports, category spending breakdown, CSV export, JSON workspace backup/restore, print/save-as-PDF, voice entry, duplicate warnings, and optional receipt photos (JPEG/PNG/WebP/GIF up to 1 MB).
-- Gemini AI Coach uses the selected workspace's recorded financial snapshot and scheduled cash flows. It uses Google’s Interactions API with `gemini-3.8-flash`; the API key remains server-side. `store: false` is set for the interaction request.
+- AI Coach uses the selected workspace's recorded financial snapshot and scheduled cash flows. It uses Groq's chat completions API with `llama-3.3-70b-versatile`; the API key remains server-side.
 - Responsive mobile layout and installable PWA shell.
 
 ## 1. Create the Supabase project
@@ -38,17 +38,18 @@ window.CONFIG = {
 
 The Supabase anon key is intended for browser use with correct RLS policies. Never put a Supabase service-role key in this file.
 
-## 3. Configure Google Gemini AI
+## 3. Configure Groq AI
 
-1. Create an API key in Google AI Studio: https://aistudio.google.com/app/apikey
+1. Create an API key at https://console.groq.com/keys
 2. In your Vercel project, open **Settings → Environment Variables** and add:
-   - `GEMINI_API_KEY` = your Google Gemini API key
+   - `GROQ_API_KEY` = your Groq API key
+   - `GROQ_MODEL` = `llama-3.3-70b-versatile`
    - `SUPABASE_URL` = the same Supabase project URL
    - `SUPABASE_ANON_KEY` = the same Supabase anon/public key
-   - Optional: `GEMINI_MODEL` = `gemini-3.8-flash` (default; current Interactions API model)
-3. Redeploy after adding or changing environment variables.
+   - Optional: `GROQ_FALLBACK_MODEL` = `llama-3.1-8b-instant` (used automatically if the main model is slow or rate-limited)
+3. Redeploy after adding or changing environment variables. You can delete the old `GEMINI_*` variables.
 
-The Gemini key is only read by `/api/advice.js` on the server. Do not add it to `config.js`, HTML, or a public repository. Review Google's current API pricing, quota, and data terms before use. Gemini responses are advice only; the app does not connect to banks or execute payments.
+The Groq key is only read by `/api/advice.js` on the server. Do not add it to `config.js`, HTML, or a public repository. Review Groq's current pricing, rate limits, and data terms before use. AI responses are advice only; the app does not connect to banks or execute payments.
 
 ## 4. Deploy to Vercel
 
@@ -58,7 +59,7 @@ The Gemini key is only read by `/api/advice.js` on the server. Do not add it to 
 4. Open the deployed URL, sign in, then choose **Manage India** or **Manage UAE**.
 5. On mobile, use the browser's **Add to Home Screen** option to install the PWA shell.
 
-The included `api/advice.js` is a Vercel serverless function. It calls `https://generativelanguage.googleapis.com/v1beta/interactions` with the `x-goog-api-key` header. The app expects `/api/advice` to be deployed with it. The endpoint defaults to `gemini-3.8-flash`, uses the Interactions API request format, and avoids legacy temperature settings that are not supported by Gemini 3.x. After changing the model/environment variables, redeploy Vercel.
+The included `api/advice.js` is a Vercel serverless function. It calls Groq's OpenAI-compatible endpoint (`https://api.groq.com/openai/v1/chat/completions`) with your `GROQ_API_KEY`. The app expects `/api/advice` to be deployed with it. After changing the model/environment variables, redeploy Vercel.
 
 ## Predefined categories and interface
 
@@ -76,11 +77,11 @@ The interface is a single mobile-first design system (ink-indigo + marigold acce
 - **Voice entry:** uses the browser's speech recognition when supported (commonly Chrome/Edge). Check the captured description and amount before saving.
 - **Excel/CSV/PDF/backup:** Excel export is an Excel-compatible HTML spreadsheet with an `.xls` extension; CSV export downloads transactions. JSON backup includes the current country workspace and can be restored into the same signed-in account and country. Restore upserts matching IDs and leaves records absent from the backup untouched. Print / Save PDF uses the browser print dialog.
 - **Security:** use a strong unique password, keep Vercel environment variables private, enable RLS, and do not deploy a public signup flow unless you intend to support multiple users. Privacy mode only hides displayed amounts. The optional local PIN screen is a convenience lock, not a replacement for authentication or device security; it can be bypassed by someone with developer-tools access. Biometric authentication is not implemented. Receipt images are stored as data URLs in your private database rows, so use small, non-sensitive receipts. Browser notifications require the app to be open; there is no server-side push service.
-- **Financial advice:** Gemini may make mistakes. Verify important decisions and never share bank passwords, card PINs, or other secrets with the AI Coach.
+- **Financial advice:** The AI may make mistakes. Verify important decisions and never share bank passwords, card PINs, or other secrets with the AI Coach.
 
 ## Troubleshooting
 
 - **Workspace fails to load:** confirm the full `schema.sql` ran successfully and that the Supabase URL/key are correct.
-- **Gemini error:** check `GEMINI_API_KEY`, set `GEMINI_MODEL=gemini-3.8-flash`, verify model access/quota, inspect Vercel function logs, and redeploy after environment-variable changes. This build uses the Interactions API rather than the retired `generateContent` endpoint for the configured model.
+- **AI error:** check `GROQ_API_KEY`, set `GROQ_MODEL=llama-3.3-70b-versatile`, check Groq quota/rate limits, inspect Vercel function logs, and redeploy after environment-variable changes.
 - **Budget save conflict:** the updated schema uses a country-aware unique key; rerun the updated schema if the database reports a conflict-target error.
 - **No live bank data:** this is a manual finance tracker and does not connect to UPI, bank accounts, or payment rails.
