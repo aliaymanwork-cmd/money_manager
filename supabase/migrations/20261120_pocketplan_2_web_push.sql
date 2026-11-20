@@ -1,3 +1,5 @@
+create schema if not exists pocketplan_private;
+revoke all on schema pocketplan_private from public,anon,authenticated;
 -- PocketPlan web push subscriptions; no financial records are modified.
 create table if not exists public.push_subscriptions (
  id uuid primary key default gen_random_uuid(),
