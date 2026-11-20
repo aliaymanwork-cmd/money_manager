@@ -328,7 +328,7 @@ const INCOME_CATEGORIES={'Income':['Salary','Freelance / Side Income','Business 
 const categoryOptions=(includeIncome=false,selected='')=>Object.entries({...CATEGORY_TREE,...(includeIncome?INCOME_CATEGORIES:{})}).map(([group,items])=>`<optgroup label="${esc(group)}">${items.map(label=>{const value=group+' / '+label;return `<option value="${esc(value)}" ${selected===value?'selected':''}>${esc(label)}</option>`}).join('')}</optgroup>`).join('');
 const cap=s=>String(s).replace(/\b[a-z]/g,c=>c.toUpperCase());
 const categoryLabel=value=>String(value||'').includes(' / ')?String(value).split(' / ').slice(1).join(' / '):String(value||'Uncategorized / Cash Spent');
-let S={tab:'home',country:'',month:new Date().toLocaleDateString('en-CA').slice(0,7),entries:[],debts:[],todos:[],accounts:[],budgets:[],goals:[],assets:[],schedules:[],rate:24,cur:'INR',extra:0,ai:'',busy:false,lastAcc:'',preset:null,privacy:false};
+let S={tab:'home',country:'',month:new Date().toLocaleDateString('en-CA').slice(0,7),entries:[],debts:[],monthlyEmis:[],todos:[],accounts:[],budgets:[],goals:[],assets:[],schedules:[],rate:24,cur:'INR',extra:0,ai:'',busy:false,lastAcc:'',preset:null,privacy:false};
 try{S.lastAcc=localStorage.getItem('mp:acc')||''}catch(e){}
 // ---- small helpers -------------------------------------------------------
 const r2=n=>Math.round((+n+Number.EPSILON)*100)/100;
@@ -354,6 +354,10 @@ const inMonth=(k=S.month)=>S.entries.filter(x=>x.date.startsWith(k));
 // ---- accounts, loans, borrowed ------------------------------------------
 const accById=id=>S.accounts.find(x=>x.id===id);
 const activeDebts=()=>S.debts.filter(x=>+x.balance>0);
+const monthEMI=(loan,month=ldate().slice(0,7))=>loan.emi_type==='irregular'?(S.monthlyEmis.find(x=>x.debt_id===loan.id&&x.month.slice(0,7)===month)?.amount??null):(+loan.emi);
+const dueAmount=(loan,month=ldate().slice(0,7))=>{const amount=monthEMI(loan,month);return amount===null?null:Math.min(+loan.balance,Number(amount))};
+const irregularUnset=month=>activeDebts().filter(x=>x.emi_type==='irregular'&&monthEMI(x,month)===null);
+
 const pkey=s=>String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
 // Same name (ignoring case/extra spaces) = same person; borrowed adds up, settled subtracts.
 function people(){const m=new Map();[...S.entries].reverse().forEach(e=>{if(e.kind!=='borrowed'&&e.kind!=='settled')return;const k=pkey(e.person);if(!k)return;let p=m.get(k);if(!p){p={key:k,name:String(e.person).trim().replace(/\s+/g,' '),borrowed:0,settled:0,rows:[]};m.set(k,p)}if(e.kind==='borrowed')p.borrowed+=+e.amount;else p.settled+=+e.amount;p.rows.unshift(e)});
@@ -363,22 +367,22 @@ function lentPeople(){const m=new Map();[...S.entries].reverse().forEach(e=>{if(
 // How an entry moved the linked account balance (+ in, − out).
 const eff=e=>(e.kind==='income'||e.kind==='borrowed'||e.kind==='received')?+e.amount:(e.kind==='expense'||e.kind==='settled'||e.kind==='loanpay'||e.kind==='lent')?-e.amount:0;
 function paidAmountThisMonth(x){const k=ldate().slice(0,7);return r2(S.entries.filter(e=>e.kind==='loanpay'&&e.debt_id===x.id&&e.date.startsWith(k)).reduce((s,e)=>s+(+e.amount),0))}
-function paidThisMonth(x){return paidAmountThisMonth(x)>=+x.emi}
+function paidThisMonth(x){return monthEMI(x)!==null&&paidAmountThisMonth(x)>=monthEMI(x)}
 function nextDue(x){const t=new Date();t.setHours(0,0,0,0);const dim=(y,m)=>new Date(y,m+1,0).getDate(),day=Math.max(1,Math.min(31,+x.due_day||1));
   let d=new Date(t.getFullYear(),t.getMonth(),Math.min(day,dim(t.getFullYear(),t.getMonth())));const paid=paidThisMonth(x);
   if(paid)d=new Date(t.getFullYear(),t.getMonth()+1,Math.min(day,dim(t.getFullYear(),t.getMonth()+1)));
   return{d,n:Math.round((d-t)/864e5),paid}}
 // Loan EMIs + dated reminders coming up (or overdue), soonest first.
 function upcoming(days){const t=new Date();t.setHours(0,0,0,0);const out=[];
-  activeDebts().forEach(x=>{const nd=nextDue(x);if(nd.n<=days)out.push({type:'loan',x,d:nd.d,n:nd.n,amt:Math.min(+x.emi,+x.balance)})});
+  activeDebts().forEach(x=>{const nd=nextDue(x);if(nd.n<=days)out.push({type:'loan',x,d:nd.d,n:nd.n,amt:dueAmount(x)??0})});
   S.todos.forEach(x=>{if(x.done||!x.due_date)return;const d=new Date(x.due_date+'T00:00:00'),n=Math.round((d-t)/864e5);if(n<=days)out.push({type:'todo',x,d,n})});
   S.schedules.filter(x=>x.active).forEach(x=>{const d=new Date(x.next_date+'T00:00:00'),n=Math.round((d-t)/864e5);if(n<=days)out.push({type:'schedule',x,d,n})});
   return out.sort((a,b)=>a.n-b.n)}
 const upRow=o=>`<div class="row"><div>${esc(o.type==='loan'?o.x.name:o.type==='schedule'?o.x.title:o.x.text)}<div class="mute ${o.n<0?'bad':''}">${when(o.n)} · ${dstr(o.d)}${o.type==='todo'?' · Reminder':o.type==='schedule'?' · '+(o.x.kind==='income'?'Expected income':'Scheduled bill'):''}</div></div><div>${o.type==='loan'?D(o.amt,o.x.currency||'INR'):o.type==='schedule'?D(o.x.amount,o.x.currency||S.cur):''}</div></div>`;
 function accSel(id,label){const last=S.lastAcc&&accById(S.lastAcc)?S.lastAcc:(S.accounts[0]?S.accounts[0].id:'');
   return `<label class="mute" id="${id}-l" for="${id}">${label}</label><select id="${id}">${S.accounts.map(a=>`<option value="${a.id}" ${a.id===last?'selected':''}>${esc(a.name)} · ${fmt(a.balance,a.currency||S.cur)}</option>`).join('')}<option value="">${S.accounts.length?'No account (don’t track)':'No accounts yet (add one in Accounts)'}</option></select>`}
-function payBox(x,pre){const id=pre+'-'+x.id,def=r2(Math.min(+x.emi,+x.balance));
-  return `<div class="paybox" data-id="${x.id}"><div class="grid"><div><label class="mute" for="pa-${id}">Amount paying</label><input class="pa" id="pa-${id}" type="number" inputmode="decimal" min="0" step="any" value="${def}"></div><div>${accSel('ps-'+id,'Pay from account')}</div></div><button onclick="payLoan(this)">Pay now</button></div>`}
+function payBox(x,pre){const id=pre+'-'+x.id,def=r2(Math.min(dueAmount(x)??0,+x.balance));
+  return `<div class="paybox" data-id="${x.id}"><div class="grid"><div><label class="mute" for="pa-${id}">Amount paying</label><input class="pa" id="pa-${id}" type="number" inputmode="decimal" min="0" step="any" value="${def||''}" placeholder="${x.emi_type==='irregular'&&monthEMI(x)===null?'Set this month’s EMI first':'Amount'}"></div><div>${accSel('ps-'+id,'Pay from account')}</div></div><button onclick="payLoan(this)">Pay now</button></div>`}
 function entryRow(x){const acc=x.account_id&&accById(x.account_id),k=x.kind,plus=['income','borrowed','received'].includes(k),cls=k==='income'||k==='received'?'ok':k==='borrowed'?'warn':'bad';
   const tag=k==='borrowed'?'<span class="tag">Borrowed</span>':k==='settled'?'<span class="tag">Repaid</span>':k==='lent'?'<span class="tag">Lent</span>':k==='received'?'<span class="tag">Received back</span>':k==='loanpay'?'<span class="tag">Loan</span>':'';
   return `<div class="row"><div>${tag}${esc(x.title)}<div class="mute">${esc(x.category)} · ${x.date}${acc?' · '+esc(acc.name):''}${x.person?' · '+esc(x.person):''}${x.payment_method?' · '+esc(x.payment_method):''}${x.notes?' · '+esc(x.notes):''}${x.receipt_data?' · <a target="_blank" rel="noopener" href="'+x.receipt_data+'">Receipt</a>':''}</div></div><div><span class="amt"><span class="${cls}">${plus?'+':'−'}</span>${D(x.amount,x.currency||'INR')}</span><button class="ghost" onclick="delEntry('${x.id}')">✕</button></div></div>`}
@@ -402,17 +406,17 @@ async function load(){
   $('#nav').hidden=true;
   $('#app').innerHTML=`<section class="loading-panel"><span class="loading-spinner"></span><h1>Preparing your workspace</h1><p>Securely organising your accounts and latest activity.</p><div class="loading-skeleton"><i></i><i></i><i></i></div></section>`;
   try {
-    const [e,d,t,a,b,s,g,as,sc]=await Promise.all([q('entries').select('*').eq('country',S.country).order('date',{ascending:false}),q('debts').select('*').eq('country',S.country).order('rate',{ascending:false}),q('todos').select('*').eq('country',S.country).order('created'),q('accounts').select('*').eq('country',S.country).order('name'),q('budgets').select('*').eq('country',S.country).order('category'),q('settings').select('*').maybeSingle(),q('goals').select('*').eq('country',S.country).order('created_at'),q('assets').select('*').eq('country',S.country).order('name'),q('schedules').select('*').eq('country',S.country).order('next_date')]);
-    const failed=[e,d,t,a,b,s,g,as,sc].find(x=>x.error);
+    const [e,d,t,a,b,s,g,as,sc,me]=await Promise.all([q('entries').select('*').eq('country',S.country).order('date',{ascending:false}),q('debts').select('*').eq('country',S.country).order('rate',{ascending:false}),q('todos').select('*').eq('country',S.country).order('created'),q('accounts').select('*').eq('country',S.country).order('name'),q('budgets').select('*').eq('country',S.country).order('category'),q('settings').select('*').maybeSingle(),q('goals').select('*').eq('country',S.country).order('created_at'),q('assets').select('*').eq('country',S.country).order('name'),q('schedules').select('*').eq('country',S.country).order('next_date'),q('debt_monthly_emis').select('*').eq('country',S.country).order('month')]);
+    const failed=[e,d,t,a,b,s,g,as,sc,me].find(x=>x.error);
     if(failed){$('#app').innerHTML=`<section class="load-error"><div class="error-emoji">🧩</div><h1>Almost there!</h1><p>We couldn't load this workspace. Please check your database setup and try again.</p><p class="error-detail">${esc(failed.error.message||'Unknown database error')}</p><div class="error-actions"><button onclick="load()">Try again</button><button class="secondary-button" onclick="switchCountry()">Back to countries</button></div></section>`;return}
-    S.entries=e.data||[];S.debts=d.data||[];S.todos=t.data||[];S.accounts=a.data||[];S.budgets=b.data||[];S.goals=g.data||[];S.assets=as.data||[];S.schedules=sc.data||[];if(s.data)S.rate=+s.data.rate;render({tab:true});notifyDue();
+    S.entries=e.data||[];S.debts=d.data||[];S.todos=t.data||[];S.accounts=a.data||[];S.budgets=b.data||[];S.goals=g.data||[];S.assets=as.data||[];S.schedules=sc.data||[];S.monthlyEmis=me.data||[];if(s.data)S.rate=+s.data.rate;render({tab:true});notifyDue();
   } catch(err) {
     $('#app').innerHTML=`<section class="load-error"><div class="error-emoji">🌦️</div><h1>Couldn't open this workspace</h1><p>Please check your connection and Supabase configuration, then try again.</p><p class="error-detail">${esc(err?.message||'Unexpected error')}</p><div class="error-actions"><button onclick="load()">Try again</button><button class="secondary-button" onclick="switchCountry()">Back to countries</button></div></section>`;
   }
 }
-function totals(){const m=inMonth(),inc=sumC(m.filter(x=>x.kind=='income'),'amount'),exp=sumC(m.filter(x=>x.kind=='expense'),'amount'),emi=sumC(activeDebts(),'emi');return{inc,exp,emi,left:inc-exp-emi}}
-function emiMonthTotal(){return r2(activeDebts().reduce((n,x)=>n+Math.max(0,cv(x.emi,x.currency||'INR',S.cur)-cv(paidAmountThisMonth(x),x.currency||'INR',S.cur)),0))}
-function emiNextMonthTotal(){const now=new Date(),next=new Date(now.getFullYear(),now.getMonth()+1,1);return sumC(activeDebts().filter(x=>{const day=Math.max(1,Math.min(31,+x.due_day||1));const due=new Date(next.getFullYear(),next.getMonth(),Math.min(day,new Date(next.getFullYear(),next.getMonth()+1,0).getDate()));return +x.balance>0&&due.getMonth()===next.getMonth()}),'emi')}
+function totals(){const m=inMonth(),inc=sumC(m.filter(x=>x.kind=='income'),'amount'),exp=sumC(m.filter(x=>x.kind=='expense'),'amount'),emi=activeDebts().reduce((n,x)=>n+(monthEMI(x,S.month)||0),0);return{inc,exp,emi,left:inc-exp-emi}}
+function emiMonthTotal(){return r2(activeDebts().reduce((n,x)=>n+Math.max(0,cv(monthEMI(x)||0,x.currency||'INR',S.cur)-cv(paidAmountThisMonth(x),x.currency||'INR',S.cur)),0))}
+function emiNextMonthTotal(){const now=new Date(),next=new Date(now.getFullYear(),now.getMonth()+1,1);return activeDebts().filter(x=>{const day=Math.max(1,Math.min(31,+x.due_day||1));const due=new Date(next.getFullYear(),next.getMonth(),Math.min(day,new Date(next.getFullYear(),next.getMonth()+1,0).getDate()));return +x.balance>0&&due.getMonth()===next.getMonth()}).reduce((n,x)=>n+cv(monthEMI(x,ymd(next).slice(0,7))||0,x.currency||'INR',S.cur),0)}
 // Avalanche payoff in display currency: highest interest first, freed EMIs roll forward.
 function payoff(extra){
   let d=activeDebts().map(x=>({r:+x.rate,b:cv(x.balance,x.currency||'INR',S.cur),e:cv(x.emi,x.currency||'INR',S.cur)})).sort((a,b)=>b.r-a.r);
@@ -434,7 +438,7 @@ function budgetBars(){const sp={};inMonth().filter(x=>x.kind=='expense').forEach
 function forecastCash(days){const now=new Date();now.setHours(0,0,0,0);const end=new Date(now);end.setDate(end.getDate()+days);let delta=0;const avgExpense=Math.max(0,S.entries.filter(e=>e.kind==='expense'&&e.date>=ymd(new Date(now.getTime()-89*864e5))&&e.date<=ldate()).reduce((n,e)=>n+cv(e.amount,e.currency||'INR',S.cur),0)/90);delta-=avgExpense*days;
   for(const x of S.schedules.filter(v=>v.active)){let d=new Date(x.next_date+'T00:00:00'),guard=0;while(d<now&&guard++<500){if(x.repeat_every==='none')break;if(x.repeat_every==='weekly')d.setDate(d.getDate()+7);else if(x.repeat_every==='monthly')d.setMonth(d.getMonth()+1);else if(x.repeat_every==='yearly')d.setFullYear(d.getFullYear()+1)}guard=0;while(d<=end&&guard++<100){if(d>=now)delta+=(x.kind==='income'?1:-1)*cv(x.amount,x.currency||'INR',S.cur);if(x.repeat_every==='none')break;if(x.repeat_every==='weekly')d.setDate(d.getDate()+7);else if(x.repeat_every==='monthly')d.setMonth(d.getMonth()+1);else if(x.repeat_every==='yearly')d.setFullYear(d.getFullYear()+1)}}
   // Estimate loan EMI outflows by the number of due dates in the selected horizon.
-  for(const x of activeDebts()){const day=Math.max(1,Math.min(31,+x.due_day||1));let d=new Date(now.getFullYear(),now.getMonth(),Math.min(day,new Date(now.getFullYear(),now.getMonth()+1,0).getDate()));if(d<now)d.setMonth(d.getMonth()+1);let guard=0;while(d<=end&&guard++<10){if(!paidThisMonth(x)||d.getMonth()!==now.getMonth())delta-=cv(Math.min(+x.emi,+x.balance),x.currency||'INR',S.cur);d=new Date(d.getFullYear(),d.getMonth()+1,Math.min(day,new Date(d.getFullYear(),d.getMonth()+2,0).getDate()))}}
+  for(const x of activeDebts()){const day=Math.max(1,Math.min(31,+x.due_day||1));let d=new Date(now.getFullYear(),now.getMonth(),Math.min(day,new Date(now.getFullYear(),now.getMonth()+1,0).getDate()));if(d<now)d.setMonth(d.getMonth()+1);let guard=0;while(d<=end&&guard++<10){if(!paidThisMonth(x)||d.getMonth()!==now.getMonth())delta-=cv(dueAmount(x,ymd(d).slice(0,7))||0,x.currency||'INR',S.cur);d=new Date(d.getFullYear(),d.getMonth()+1,Math.min(day,new Date(d.getFullYear(),d.getMonth()+2,0).getDate()))}}
   return {balance:sumC(S.accounts,'balance')+delta,delta,avgExpense}}
 function healthSnapshot(){
   const t=totals(),cash=sumC(S.accounts,'balance'),debt=sumC(activeDebts(),'balance');
@@ -490,12 +494,12 @@ function render(o={}){
     a.innerHTML=`<h1>Debts and EMIs</h1><div class="card"><input id="dn" placeholder="Loan name"><div class="grid"><input id="db" type="number" inputmode="decimal" placeholder="Balance left"><input id="de" type="number" inputmode="decimal" placeholder="Monthly EMI"><input id="dr" type="number" inputmode="decimal" placeholder="Interest % / year"><input id="dd" type="number" inputmode="numeric" placeholder="Due day (1-31)"></div>${cs('dc')}<button onclick="addDebt()">Add debt</button></div>
     <div class="card">${S.debts.length?S.debts.map(x=>{const cl=+x.balance<=0,c=x.currency||'INR';return `<div class="loan"><div class="row" style="border:0;padding-bottom:4px"><div>${esc(x.name)}<div class="mute">${cl?'Cleared 🎉':`Due on ${x.due_day} · ${x.rate}% · clears in ${ym(solo(x))}`}</div></div><div>${D(x.emi,c)}<div class="mute">${fmt(x.balance,c)} left</div><button class="ghost" onclick="del('debts','${x.id}')">✕</button></div></div>${cl?'':payBox(x,'l')}</div>`}).join(''):'<div class="mute">No debts added.</div>'}</div>`}
   if(S.tab==='debts'){
-    const loans=activeDebts().map(x=>({name:x.name,balance:cv(x.balance,x.currency||S.cur,S.cur),rate:x.rate,emi:cv(x.emi,x.currency||S.cur,S.cur)}));
+    const loans=activeDebts().filter(x=>x.emi_type!=='irregular').map(x=>({name:x.name,balance:cv(x.balance,x.currency||S.cur,S.cur),rate:x.rate,emi:cv(x.emi,x.currency||S.cur,S.cur)}));
     const avalanche=PocketPlanFinance.debtPayoff(loans,S.extra,'avalanche');
     const snowball=PocketPlanFinance.debtPayoff(loans,S.extra,'snowball');
     const strategyText=p=>p.months===null?'At this rate, full repayment is not projected within 50 years':ym(p.months)+' · estimated interest '+fmt(p.interest,S.cur);
     a.insertAdjacentHTML('beforeend',`<div class="card"><div class="section-heading"><h2>Debt payoff simulator</h2><i data-lucide="calculator"></i></div>
-    <p class="mute">Compare repaying highest-interest loans first (avalanche) with smallest balances first (snowball). Your minimum EMI amounts remain included.</p>
+    <p class="mute">Compare fixed-EMI loans using avalanche and snowball. Irregular loans are excluded because future payments are not fixed.</p>
     <label for="extraPay">Extra monthly debt payment (${S.cur})</label><input id="extraPay" type="number" min="0" step="100" value="${S.extra}" onchange="S.extra=Math.max(0,Number(this.value)||0);render()">
     <div class="metric-grid"><div class="metric-card"><div class="metric-label">Avalanche</div><div class="metric-value" style="font-size:18px">${esc(strategyText(avalanche))}</div></div><div class="metric-card"><div class="metric-label">Snowball</div><div class="metric-value" style="font-size:18px">${esc(strategyText(snowball))}</div></div></div>
     <p class="mute">Avalanche priority: ${esc(avalanche.order.join(' → ')||'No active loans')}. These are simulations with fixed interest rates, fixed monthly payment capacity and no fees. The estimated figures are not contractual payoff schedules.</p></div>`);
@@ -556,7 +560,7 @@ function voiceExpense(){const SR=window.SpeechRecognition||window.webkitSpeechRe
 function enableReminders(){if(!('Notification' in window))return alert('This browser does not support notifications.');Notification.requestPermission().then(p=>{if(p==='granted'){alert('Notifications enabled. Keep the app open to receive due reminders.');notifyDue()}else alert('Notifications were not enabled. You can change this in browser settings.')})}
 function notifyDue(){if(!S.country||!('Notification' in window)||Notification.permission!=='granted')return;const today=ldate(),now=new Date();now.setHours(0,0,0,0);const soon=3;
   S.todos.filter(x=>!x.done&&x.due_date).forEach(x=>{const d=new Date(x.due_date+'T00:00:00'),n=Math.round((d-now)/864e5);if(n<=soon){const k='reminder:'+S.country+':'+x.id+':'+x.due_date+':soon';if(!localStorage.getItem(k)){new Notification(n<0?'Overdue reminder':n===0?'Reminder due today':'Reminder due soon',{body:x.text+(n>0?' · '+n+' day(s) left':'')});localStorage.setItem(k,'1')}}});
-  activeDebts().forEach(x=>{const nd=nextDue(x);if(nd.n>soon||nd.paid)return;const k='emi:'+S.country+':'+x.id+':'+ymd(nd.d)+':soon';if(!localStorage.getItem(k)){new Notification(nd.n<0?'EMI overdue':nd.n===0?'EMI due today':'EMI due soon',{body:x.name+' · '+fmt(Math.min(+x.emi,+x.balance),x.currency||S.cur)});localStorage.setItem(k,'1')}});
+  activeDebts().forEach(x=>{const nd=nextDue(x);if(nd.n>soon||nd.paid)return;const k='emi:'+S.country+':'+x.id+':'+ymd(nd.d)+':soon';if(!localStorage.getItem(k)){new Notification(nd.n<0?'EMI overdue':nd.n===0?'EMI due today':'EMI due soon',{body:x.name+' · '+(dueAmount(x)===null?'Monthly EMI not set':fmt(dueAmount(x),x.currency||S.cur))});localStorage.setItem(k,'1')}});
   S.schedules.filter(x=>x.active).forEach(x=>{const d=new Date(x.next_date+'T00:00:00'),n=Math.round((d-now)/864e5);if(n<=soon){const k='schedule:'+S.country+':'+x.id+':'+x.next_date+':soon';if(!localStorage.getItem(k)){new Notification(n<0?'Scheduled item overdue':n===0?'Scheduled item due today':'Scheduled item due soon',{body:x.title+' · '+fmt(x.amount,x.currency||S.cur)});localStorage.setItem(k,'1')}}})}
 setInterval(notifyDue,30*60*1000);
 async function chooseCountry(c){if(!['IN','AE'].includes(c))return;const {data,error}=await db.auth.getSession();if(error||!data.session){login('Please sign in again to open your workspace.');return;}S.country=c;S.cur=c==='IN'?'INR':'AED';S.tab='home';S.ai='';await load()}function switchCountry(){S.country='';S.ai='';S.tab='home';render()}
@@ -629,7 +633,27 @@ const delEntry=guard(async id=>{
 });
 const addBudget=guard(async()=>{const category=$('#bc').value.trim(),amount=+$('#ba').value;if(!category||!Number.isFinite(amount)||amount<=0)return toast('Enter a category and a budget greater than zero.',1);return add('budgets',{category,amount,currency:$('#bu').value,carryover:!!$('#bcarry')?.checked},{onConflict:'user_id,category,country'})});
 const addAcc=guard(async()=>{const name=$('#an').value.trim(),balance=+$('#ab').value;if(!name||!Number.isFinite(balance)||balance<0)return toast('Enter an account name and a valid non-negative balance.',1);return add('accounts',{name,kind:$('#at').value,balance,currency:$('#ac').value})});
-const addDebt=guard(async()=>{const name=$('#dn').value.trim(),balance=+$('#db').value,emi=+$('#de').value,rate=+$('#dr').value||0,due=+$('#dd').value||1;if(!name||!Number.isFinite(balance)||balance<=0||!Number.isFinite(emi)||emi<=0||rate<0||due<1||due>31)return toast('Check the loan name, balance, EMI, interest rate, and due day (1–31).',1);return add('debts',{name,balance,emi,rate,due_day:due,currency:$('#dc').value})});
+const addDebt=guard(async()=>{const name=$('#dn').value.trim(),balance=+$('#db').value,emi=+$('#de').value,rate=+$('#dr').value||0,due=+$('#dd').value||1,emi_type=$('#emiType').value;if(!name||!Number.isFinite(balance)||balance<=0||(emi_type==='fixed'&&(!Number.isFinite(emi)||emi<=0))||rate<0||due<1||due>31)return toast('Check the loan name, balance, EMI, interest rate, and due day (1–31).',1);return add('debts',{name,balance,emi:emi_type==='irregular'?0:emi,emi_type,rate,due_day:due,currency:$('#dc').value})});
+const saveMonthlyEmi=guard(async(debtId,month,amount)=>{
+ const loan=S.debts.find(x=>x.id===debtId);if(!loan||loan.emi_type!=='irregular')return;
+ if(!/^\\d{4}-(0[1-9]|1[0-2])$/.test(month))return toast('Choose a valid month.',1);
+ const n=Number(amount);if(!Number.isFinite(n)||n<=0)return toast('Enter an EMI amount greater than zero.',1);
+ const row={debt_id:debtId,country:S.country,month:month+'-01',amount:r2(n)};
+ const {data,error}=await db.from('debt_monthly_emis').upsert(row,{onConflict:'debt_id,month'}).select().single();if(error)throw error;
+ const i=S.monthlyEmis.findIndex(x=>x.debt_id===debtId&&x.month===row.month);if(i<0)S.monthlyEmis.push(data);else S.monthlyEmis[i]=data;
+ toast('Monthly EMI saved');render({clear:true});
+});
+const removeMonthlyEmi=guard(async(debtId,month)=>{
+ if(!confirm('Remove the planned EMI for '+month+'? Recorded payments will not be deleted.'))return;
+ const {error}=await db.from('debt_monthly_emis').delete().eq('debt_id',debtId).eq('month',month+'-01').eq('country',S.country);if(error)throw error;
+ S.monthlyEmis=S.monthlyEmis.filter(x=>!(x.debt_id===debtId&&x.month===month+'-01'));render({clear:true});toast('Monthly EMI removed');
+});
+const updateEmiType=guard(async(id,type)=>{
+ if(!['fixed','irregular'].includes(type))return;
+ const {data,error}=await db.from('debts').update({emi_type:type}).eq('id',id).eq('country',S.country).select().single();if(error)throw error;
+ put('debts',data);render({clear:true});toast('EMI type updated');
+});
+
 const addTodo=guard(async()=>{const text=$('#tt').value.trim();if(!text)return toast('Enter a reminder first.',1);return add('todos',{text,due_date:$('#td').value||null,repeat_every:$('#tr')?.value||'none',done:false})});
 const del=guard(async(t,id)=>{
   if(t==='accounts'&&!confirm('Delete this account? Past transactions stay, but are no longer linked to it.'))return;
@@ -680,7 +704,7 @@ async function ask(){
     if(sessionResult?.error||!session){S.ai='Your login session has expired. Please sign in again, then retry your question.';o.textContent=S.ai;return;}
     const t=totals(),sp={};
     inMonth().filter(x=>x.kind==='expense').forEach(x=>sp[x.category]=(sp[x.category]||0)+cv(x.amount,x.currency,S.cur));
-    const summary={note:`Selected financial workspace: ${S.country==='IN'?'India':'UAE'}. Do not convert or combine currencies or infer missing data.`,today:new Date().toLocaleDateString('en-CA'),country:S.country,currency:S.cur,month:S.month,...t,balances:accountTotal,accounts:S.accounts.map(({name,kind,balance,currency})=>({name,kind,balance,currency})),budgets:S.budgets.map(({category,amount,currency})=>({category,amount,currency})),spendByCategory:sp,debts:activeDebts().map(x=>({name:x.name,balance:x.balance,emi:x.emi,rate:x.rate,due_day:x.due_day,currency:x.currency,paidThisMonth:paidThisMonth(x),nextDueDate:ymd(nextDue(x).d)})),borrowedFromPeople:people().map(({name,borrowed,settled,out})=>({name,borrowed,repaid:settled,outstanding:out})),moneyLentToPeople:lentPeople().map(({name,lent,received,out})=>({name,lent,receivedBack:received,outstanding:out})),openTodos:S.todos.filter(x=>!x.done).map(({text,due_date,created,repeat_every})=>({text,due_date:due_date||null,repeat_every:repeat_every||'none',created:created||null})),assets:S.assets.map(({name,asset_type,value,currency})=>({name,asset_type,value,currency})),savingsGoals:S.goals.map(({name,target,saved,deadline,currency})=>({name,target,saved,deadline:deadline||null,currency})),scheduledCashFlows:S.schedules.filter(x=>x.active).map(({title,kind,amount,currency,category,next_date,repeat_every})=>({title,kind,amount,currency,category,next_date,repeat_every})),recentTransactions:S.entries.slice(0,30).map(({date,kind,title,category,amount,currency,person})=>({date,kind,title,category,amount,currency,person:person||undefined}))};
+    const summary={note:`Selected financial workspace: ${S.country==='IN'?'India':'UAE'}. Do not convert or combine currencies or infer missing data.`,today:new Date().toLocaleDateString('en-CA'),country:S.country,currency:S.cur,month:S.month,...t,balances:accountTotal,accounts:S.accounts.map(({name,kind,balance,currency})=>({name,kind,balance,currency})),budgets:S.budgets.map(({category,amount,currency})=>({category,amount,currency})),spendByCategory:sp,debts:activeDebts().map(x=>({name:x.name,balance:x.balance,emi:monthEMI(x),emi_type:x.emi_type||'fixed',rate:x.rate,due_day:x.due_day,currency:x.currency,paidThisMonth:paidThisMonth(x),nextDueDate:ymd(nextDue(x).d)})),borrowedFromPeople:people().map(({name,borrowed,settled,out})=>({name,borrowed,repaid:settled,outstanding:out})),moneyLentToPeople:lentPeople().map(({name,lent,received,out})=>({name,lent,receivedBack:received,outstanding:out})),openTodos:S.todos.filter(x=>!x.done).map(({text,due_date,created,repeat_every})=>({text,due_date:due_date||null,repeat_every:repeat_every||'none',created:created||null})),assets:S.assets.map(({name,asset_type,value,currency})=>({name,asset_type,value,currency})),savingsGoals:S.goals.map(({name,target,saved,deadline,currency})=>({name,target,saved,deadline:deadline||null,currency})),scheduledCashFlows:S.schedules.filter(x=>x.active).map(({title,kind,amount,currency,category,next_date,repeat_every})=>({title,kind,amount,currency,category,next_date,repeat_every})),recentTransactions:S.entries.slice(0,30).map(({date,kind,title,category,amount,currency,person})=>({date,kind,title,category,amount,currency,person:person||undefined}))};
     const controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),45000);
     try{
