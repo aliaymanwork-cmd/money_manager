@@ -401,7 +401,7 @@ function kindChange(){const k=$('#k');if(!k)return;const b=['borrowed','lent','r
 function postRender(){if(S.preset){for(const id in S.preset){const el=document.getElementById(id);if(el)el.value=S.preset[id]}S.preset=null}kindChange();if(window.lucide)lucide.createIcons()}
 async function load(){
   const q=t=>db.from(t);
-  if(!S.country){render();return}
+  if(!S.country){S.monthlyEmis=[];render();return}
   S.cur=S.country==='IN'?'INR':'AED';
   $('#nav').hidden=true;
   $('#app').innerHTML=`<section class="loading-panel"><span class="loading-spinner"></span><h1>Preparing your workspace</h1><p>Securely organising your accounts and latest activity.</p><div class="loading-skeleton"><i></i><i></i><i></i></div></section>`;
@@ -554,8 +554,8 @@ const paySchedule=guard(async(id)=>{
 });
 function togglePrivacy(){S.privacy=!S.privacy;render({clear:true});toast(S.privacy?'Privacy mode enabled':'Balances visible')}
 function downloadFile(name,content,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
-function exportBackup(){const data={format:'PocketPlan backup v1',exportedAt:new Date().toISOString(),userId:uid,country:S.country,currency:S.cur,entries:S.entries,debts:S.debts,todos:S.todos,accounts:S.accounts,budgets:S.budgets,goals:S.goals,assets:S.assets,schedules:S.schedules};downloadFile(`pocketplan-${S.country}-${ldate()}.json`,JSON.stringify(data,null,2),'application/json');toast('Workspace backup downloaded')}
-const restoreBackup=guard(async(input)=>{const f=input.files?.[0];if(!f)return;let data;try{data=JSON.parse(await f.text())}catch(e){return toast('That backup file is not valid JSON.',1)}if(data?.format!=='PocketPlan backup v1'||data.country!==S.country||data.userId!==uid)return toast('Choose a PocketPlan backup from this signed-in account and the currently selected country.',1);if(!confirm('Restore this backup into the current workspace? Existing records with matching IDs will be updated; records not in the backup will remain. Export a backup first.'))return;const order=[['accounts',data.accounts],['debts',data.debts],['entries',data.entries],['budgets',data.budgets],['todos',data.todos],['goals',data.goals],['assets',data.assets],['schedules',data.schedules]];for(const [table,rows] of order){if(!Array.isArray(rows)||!rows.length)continue;const clean=rows.map(({user_id,...r})=>({...r,country:S.country}));const {error}=await db.from(table).upsert(clean,{onConflict:'id'});if(error)return fail(error)}toast('Backup restored. Reloading workspace…');await load()})
+function exportBackup(){const data={format:'PocketPlan backup v1',monthlyEmis:S.monthlyEmis,exportedAt:new Date().toISOString(),userId:uid,country:S.country,currency:S.cur,entries:S.entries,debts:S.debts,todos:S.todos,accounts:S.accounts,budgets:S.budgets,goals:S.goals,assets:S.assets,schedules:S.schedules};downloadFile(`pocketplan-${S.country}-${ldate()}.json`,JSON.stringify(data,null,2),'application/json');toast('Workspace backup downloaded')}
+const restoreBackup=guard(async(input)=>{const f=input.files?.[0];if(!f)return;let data;try{data=JSON.parse(await f.text())}catch(e){return toast('That backup file is not valid JSON.',1)}if(data?.format!=='PocketPlan backup v1'||data.country!==S.country||data.userId!==uid)return toast('Choose a PocketPlan backup from this signed-in account and the currently selected country.',1);if(!confirm('Restore this backup into the current workspace? Existing records with matching IDs will be updated; records not in the backup will remain. Export a backup first.'))return;const order=[['accounts',data.accounts],['debts',data.debts],['entries',data.entries],['budgets',data.budgets],['todos',data.todos],['goals',data.goals],['assets',data.assets],['schedules',data.schedules],['debt_monthly_emis',data.monthlyEmis]];for(const [table,rows] of order){if(!Array.isArray(rows)||!rows.length)continue;const clean=rows.map(({user_id,...r})=>({...r,country:S.country}));const {error}=await db.from(table).upsert(clean,{onConflict:'id'});if(error)return fail(error)}toast('Backup restored. Reloading workspace…');await load()})
 function monthsUntil(date){if(!date)return 1;const now=new Date(),d=new Date(date+'T00:00:00');return Math.max(1,(d.getFullYear()-now.getFullYear())*12+d.getMonth()-now.getMonth()+(d.getDate()>now.getDate()?1:0))}
 const addAsset=guard(async()=>{const name=$('#assetName').value.trim(),value=Number($('#assetValue').value),currency=$('#assetCur').value;if(!name||!Number.isFinite(value)||value<0)return toast('Enter an asset name and valid value.',1);return add('assets',{name,value,asset_type:$('#assetType').value,currency})});
 const addGoal=guard(async()=>{const name=$('#goalName').value.trim(),target=Number($('#goalTarget').value),saved=Number($('#goalSaved').value||0),deadline=$('#goalDate').value||null;if(!name||!Number.isFinite(target)||target<=0||!Number.isFinite(saved)||saved<0)return toast('Enter a goal name, target, and valid saved amount.',1);return add('goals',{name,target,saved,deadline,currency:S.cur})});
@@ -616,6 +616,7 @@ const borrowMore=btn=>{const p=people().find(x=>x.key===decodeURIComponent(btn.c
 const payLoan=guard(async btn=>{
   const box=btn.closest('.paybox'),x=S.debts.find(d=>d.id===box.dataset.id);if(!x)return;
   const amount=r2(box.querySelector('input.pa').value),acc=accById(box.querySelector('select').value)||null;
+  if(x.emi_type==='irregular'&&monthEMI(x)===null)return toast('Set the planned EMI for this month before recording a payment.',1);
   if(!(amount>0))return toast('Enter the amount you are paying.',1);
   if(amount>+x.balance+0.001)return toast(`Only ${fmt(x.balance,x.currency||S.cur)} is left on this loan.`,1);
   if(lowBal(acc,amount))return;
@@ -732,6 +733,6 @@ function login(msg=''){$('#nav').hidden=true;$('#app').innerHTML=`<section class
 async function signIn(){const email=$('#em').value;const{error}=await db.auth.signInWithPassword({email,password:$('#pw').value});if(error){login(esc(error.message));$('#em').value=email}}
 // Only (re)load when the signed-in user actually changes. Token refreshes and tab re-focus no longer reload the app.
 let uid=null;
-db.auth.onAuthStateChange((ev,s)=>{if(!s){uid=null;S.country='';S.entries=[];S.debts=[];S.todos=[];S.accounts=[];S.budgets=[];login();return}if(s.user.id!==uid){uid=s.user.id;setTimeout(load,0)}});
+db.auth.onAuthStateChange((ev,s)=>{if(!s){uid=null;S.country='';S.entries=[];S.debts=[];S.monthlyEmis=[];S.todos=[];S.accounts=[];S.budgets=[];login();return}if(s.user.id!==uid){uid=s.user.id;setTimeout(load,0)}});
 db.auth.getSession().then(({data})=>{if(!data.session)login()});
 </script></body></html>
