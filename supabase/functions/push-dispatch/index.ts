@@ -18,7 +18,8 @@ Deno.serve(async req=>{
  const url=Deno.env.get('SUPABASE_URL'),key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
  const publicKey=Deno.env.get('VAPID_PUBLIC_KEY'),privateKey=Deno.env.get('VAPID_PRIVATE_KEY');
  if(!url||!key||!publicKey||!privateKey)return json({error:'Push delivery is not configured'},503);
- webpush.setVapidDetails('mailto:'+ (Deno.env.get('VAPID_CONTACT_EMAIL')||'admin@example.com'),publicKey,privateKey);
+ const contact=(Deno.env.get('VAPID_CONTACT_EMAIL')||'admin@example.com').trim();
+ webpush.setVapidDetails(contact.startsWith('mailto:')?contact:'mailto:'+contact,publicKey,privateKey);
  const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
  const {data:subs,error:subError}=await db.from('push_subscriptions').select('*').limit(1000);
  if(subError)return json({error:'Subscription lookup failed'},500);
