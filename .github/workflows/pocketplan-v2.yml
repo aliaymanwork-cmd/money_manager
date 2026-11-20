@@ -1,0 +1,20 @@
+name: PocketPlan 2.0 checks
+on:
+  push:
+    branches: [pocketplan-v2]
+  pull_request:
+    branches: [main]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax check
+        run: |
+          node --check api/advice.js
+          node --check tests/advice.test.js
+      - name: API validation tests
+        run: node --test tests/advice.test.js
