@@ -2,7 +2,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>PocketPlan — Personal Finance OS</title>
 <link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#f1f3f8" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#0d1020" media="(prefers-color-scheme: dark)"><meta name="color-scheme" content="light dark"><link rel="apple-touch-icon" href="/icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><script src="/config.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400..800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400..800&family=DM+Sans:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script><script src="/finance.js"></script>
 <style>
@@ -306,6 +306,89 @@ body:not(:has(#nav:not([hidden]))) #toast{bottom:24px}
   .hero{background:#eee!important;color:#111!important;print-color-adjust:exact}
   .hero *{color:#111!important}
 }
+
+/* PocketPlan Studio · 2026 visual refresh — presentation only, data flows unchanged */
+:root{
+ color-scheme:light;--bg:#f5f7fb;--surface:#ffffff;--surface-2:#f6f8fc;
+ --ink:#15233b;--text:#34435b;--mute:#738199;--line:#e6ebf3;
+ --ok:#087f72;--bad:#c94553;--warn:#a76a1e;--accent:#80d6c5;
+ --soft:#e9f8f4;--soft-bad:#fff0f1;
+ --btn:#173b57;--btn-ink:#fff;--btn-hover:#245575;
+ --hero-a:#153f59;--hero-b:#137d80;
+ --sans:'DM Sans','Figtree',system-ui,sans-serif;
+ --display:'Plus Jakarta Sans','Bricolage Grotesque',system-ui,sans-serif;
+}
+@media(prefers-color-scheme:dark){:root{
+ color-scheme:dark;--bg:#0d1624;--surface:#152338;--surface-2:#1b2d44;
+ --ink:#f3f7ff;--text:#d2deed;--mute:#9caec3;--line:#2a4059;
+ --ok:#65ddbf;--bad:#ff8e99;--warn:#ffc477;--accent:#65ddbf;
+ --soft:#173e3d;--soft-bad:#4b2936;
+ --btn:#65ddbf;--btn-ink:#102a2c;--btn-hover:#9af0d8;
+ --hero-a:#17354e;--hero-b:#125f67;
+}}
+html{scroll-behavior:smooth}
+body{font-size:14px;letter-spacing:-.005em;background:radial-gradient(ellipse 1100px 450px at 70% -260px,rgba(60,169,169,.13),transparent),var(--bg)}
+main{max-width:960px;padding-top:30px}
+h1{font:800 clamp(25px,3.5vw,35px)/1.18 var(--display);letter-spacing:-.055em}
+h2{font:750 18px/1.3 var(--display);letter-spacing:-.035em}
+h3{font:700 15px/1.3 var(--display)}
+p.mute,.mute{line-height:1.65}
+.card,.metric-card{border:1px solid var(--line);box-shadow:0 5px 22px rgba(22,47,74,.035);transition:border-color .2s,box-shadow .2s}
+.card{border-radius:22px;padding:22px;margin:14px 0}
+.metric-card{border-radius:19px;padding:18px}
+@media(hover:hover){.card:hover,.metric-card:hover{border-color:color-mix(in srgb,var(--ok) 24%,var(--line));box-shadow:0 12px 30px rgba(22,47,74,.07)}}
+.hero{position:relative;overflow:hidden;border-radius:26px;padding:28px 30px;background:linear-gradient(120deg,var(--hero-a),var(--hero-b));box-shadow:0 16px 40px rgba(18,85,105,.17)}
+.hero:after{content:'';position:absolute;right:-100px;top:-160px;width:340px;height:340px;border:1px solid rgba(255,255,255,.18);border-radius:50%;box-shadow:0 0 0 46px rgba(255,255,255,.035),0 0 0 96px rgba(255,255,255,.025);pointer-events:none}
+.hero>*{position:relative;z-index:1}
+.balance-total{font:800 clamp(38px,7vw,56px)/1.08 var(--display);letter-spacing:-.06em}
+.hero-kicker{font-size:12px;text-transform:uppercase;letter-spacing:.11em;font-weight:750}
+.hero-sub{font-size:13px}
+.metric-grid{gap:12px}
+.metric-label{font-weight:650;letter-spacing:.01em}
+.big{font:800 27px/1.15 var(--display);letter-spacing:-.045em}
+.row{gap:14px;padding:14px 0}
+.row>div:last-child{max-width:55%}
+.tag{padding:5px 10px;font-size:11px;font-weight:750;border-radius:9px}
+.bar,.flow-bar{height:9px;border-radius:12px}
+.bar i,.flow-bar i{background:linear-gradient(90deg,var(--ok),#52c9b4)}
+input,select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:13px;box-shadow:0 1px 2px rgba(0,0,0,.02)}
+input:hover,select:hover,textarea:hover{border-color:color-mix(in srgb,var(--ok) 35%,var(--line))}
+input:focus,select:focus,textarea:focus{border-color:var(--ok);box-shadow:0 0 0 4px color-mix(in srgb,var(--ok) 13%,transparent)}
+button{border-radius:13px;font-weight:750;letter-spacing:-.01em;box-shadow:0 3px 10px rgba(20,45,70,.07)}
+button.secondary-button{background:var(--surface);box-shadow:none}
+button.ghost{box-shadow:none}
+button:focus-visible,summary:focus-visible{outline:3px solid var(--ok);outline-offset:3px}
+.fab{background:var(--ok);color:#fff;box-shadow:0 12px 30px rgba(8,127,114,.28);border-radius:19px}
+.fab:hover{background:var(--hero-b)}
+#nav{box-shadow:0 -6px 30px rgba(15,34,60,.045)}
+#nav button{box-shadow:none}
+#nav button.on{color:var(--ok);background:var(--soft)}
+#nav button.on::before{background:var(--ok)}
+#nav .sheet{box-shadow:0 20px 60px rgba(13,34,54,.2)}
+#toast{border-radius:16px;box-shadow:0 12px 35px rgba(0,0,0,.16)}
+a{color:var(--ok);text-underline-offset:3px}
+@media(min-width:900px){
+ body:has(#nav:not([hidden])){padding-left:260px}
+ #nav{width:260px;padding:28px 16px;background:var(--surface);box-shadow:none}
+ #nav .brand{font:800 20px/1 var(--display);letter-spacing:-.05em;margin-bottom:28px}
+ #nav button{border-radius:12px;margin-bottom:3px;min-height:46px}
+ #nav button.on{background:var(--soft);color:var(--ok)}
+ #nav button.on::before{display:none}
+ main{max-width:1000px;padding:40px 40px 24px}
+}
+@media(max-width:560px){
+ main{padding:19px 14px 8px}
+ .hero{padding:24px 21px;border-radius:22px}
+ .hero:after{right:-200px}
+ .card{padding:17px;border-radius:19px}
+ .metric-card{padding:15px}
+ h1{font-size:27px}
+ #nav{padding-left:5px;padding-right:5px}
+ #nav button.on{border-radius:11px}
+ #nav button.on::before{display:none}
+}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
+@media print{.card,.metric-card{box-shadow:none!important}.hero{box-shadow:none!important}}
 </style></head><body><main id="app"></main><nav id="nav" hidden></nav><div id="toast" role="status" aria-live="polite"></div><button id="fab" class="fab" aria-label="Add transaction" onclick="go('money')"><i data-lucide="plus" aria-hidden="true"></i></button>
 <script>
 if(!window.CONFIG||CONFIG.SUPABASE_URL.startsWith('PASTE')){document.getElementById('app').innerHTML='<div class="card"><b>Almost there</b><br>Open <code>config.js</code> and paste your Supabase URL and anon key, then redeploy.</div>';throw new Error('config missing')}
