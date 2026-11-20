@@ -372,7 +372,7 @@ function lentPeople(){const m=new Map();[...S.entries].reverse().forEach(e=>{if(
 const eff=e=>(e.kind==='income'||e.kind==='borrowed'||e.kind==='received')?+e.amount:(e.kind==='expense'||e.kind==='settled'||e.kind==='loanpay'||e.kind==='lent')?-e.amount:0;
 function paidAmountThisMonth(x){const k=ldate().slice(0,7);return r2(S.entries.filter(e=>e.kind==='loanpay'&&e.debt_id===x.id&&e.date.startsWith(k)).reduce((s,e)=>s+(+e.amount),0))}
 function paidThisMonth(x){return monthEMI(x)!==null&&paidAmountThisMonth(x)>=monthEMI(x)}
-function nextDue(x){const t=new Date();t.setHours(0,0,0,0);let m=ymd(t).slice(0,7);if(beforeStart(x,m))m=x.start_month.slice(0,7);let d=emiDate(x,m);if(monthEMI(x,m)!==null&&emiRemaining(x,m)<=0){m=ymd(new Date(t.getFullYear(),t.getMonth()+1,1)).slice(0,7);d=emiDate(x,m)}return{d,month:m,n:Math.round((d-t)/864e5),paid:false}}
+function nextDue(x){const t=new Date();t.setHours(0,0,0,0);let m=ymd(t).slice(0,7);if(beforeStart(x,m))m=x.start_month.slice(0,7);let d=emiDate(x,m);if(!beforeStart(x,ymd(t).slice(0,7))&&monthEMI(x,m)!==null&&emiRemaining(x,m)<=0){m=ymd(new Date(t.getFullYear(),t.getMonth()+1,1)).slice(0,7);d=emiDate(x,m)}return{d,month:m,n:Math.round((d-t)/864e5),paid:false}}
 // Loan EMIs + dated reminders coming up (or overdue), soonest first.
 function upcoming(days){const t=new Date();t.setHours(0,0,0,0);const out=[];
   activeDebts().forEach(x=>{const nd=nextDue(x);if(nd.n<=days)out.push({type:'loan',x,d:nd.d,n:nd.n,amt:Math.min(+x.balance,emiRemaining(x,nd.month)),month:nd.month})});
