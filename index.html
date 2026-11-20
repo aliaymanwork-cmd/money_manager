@@ -4,7 +4,7 @@
 <link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#f1f3f8" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#0d1020" media="(prefers-color-scheme: dark)"><meta name="color-scheme" content="light dark"><link rel="apple-touch-icon" href="/icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><script src="/config.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400..800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://unpkg.com/lucide@latest"></script><script src="/finance.js"></script>
 <style>
 /* PocketPlan — one design system (mobile-first). Ink indigo + marigold accent. */
 :root{
@@ -435,6 +435,17 @@ function forecastCash(days){const now=new Date();now.setHours(0,0,0,0);const end
   // Estimate loan EMI outflows by the number of due dates in the selected horizon.
   for(const x of activeDebts()){const day=Math.max(1,Math.min(31,+x.due_day||1));let d=new Date(now.getFullYear(),now.getMonth(),Math.min(day,new Date(now.getFullYear(),now.getMonth()+1,0).getDate()));if(d<now)d.setMonth(d.getMonth()+1);let guard=0;while(d<=end&&guard++<10){if(!paidThisMonth(x)||d.getMonth()!==now.getMonth())delta-=cv(Math.min(+x.emi,+x.balance),x.currency||'INR',S.cur);d=new Date(d.getFullYear(),d.getMonth()+1,Math.min(day,new Date(d.getFullYear(),d.getMonth()+2,0).getDate()))}}
   return {balance:sumC(S.accounts,'balance')+delta,delta,avgExpense}}
+function healthSnapshot(){
+  const t=totals(),cash=sumC(S.accounts,'balance'),debt=sumC(activeDebts(),'balance');
+  return PocketPlanFinance.financialPulse({income:t.inc,expenses:t.exp,emi:emiMonthTotal(),cash,debts:debt,borrowed:owedTotal(),lent:lentPeople().reduce((n,p)=>n+Math.max(0,p.out),0),investments:sumC(S.assets,'value')});
+}
+function financialPulseCard(){
+  const p=healthSnapshot(),runway=p.runway===null?'Not enough records':p.runway.toFixed(1)+' months';
+  return `<div class="card"><div class="section-heading"><div><div class="section-kicker">POCKETPLAN 2.0</div><h2 style="margin:3px 0 0">Your financial pulse</h2></div><i data-lucide="activity"></i></div>
+  <div class="metric-grid"><div class="metric-card"><div class="metric-label">Monthly cash surplus</div><div class="metric-value ${p.surplus<0?'bad':'ok'}">${fmt(p.surplus,S.cur)}</div></div><div class="metric-card"><div class="metric-label">Cash runway (current outflow)</div><div class="metric-value">${runway}</div></div><div class="metric-card"><div class="metric-label">Tracked net worth</div><div class="metric-value ${p.netWorth<0?'bad':'ok'}">${fmt(p.netWorth,S.cur)}</div></div></div>
+  ${p.alerts.length?p.alerts.map(item=>`<p class="mute bad">⚠ ${esc(item)}</p>`).join(''):'<p class="mute ok">No immediate warning based on this month’s recorded income, spending and EMIs.</p>'}
+  <p class="mute">Estimates use only your saved ${S.country==='IN'?'India':'UAE'} records. Runway assumes current recorded monthly spending and EMI payments continue; it is not a bank balance or forecast guarantee.</p></div>`;
+}
 function render(o={}){
   const a=$('#app'),t=totals(),nav=$('#nav');
   if(!S.country){nav.hidden=true;a.classList.add('anim');a.innerHTML=`<div class="welcome"><div class="brand-lockup"><span class="brand-mark">P</span>PocketPlan</div><h1>Which money are you managing?</h1><p class="lead">India and UAE records are kept in separate workspaces.</p><div class="country-grid"><button class="country-card" onclick="chooseCountry('IN')"><span class="flag">🇮🇳</span><span><b>India</b><small>Indian rupees · INR</small></span><span class="arrow">›</span></button><button class="country-card" onclick="chooseCountry('AE')"><span class="flag">🇦🇪</span><span><b>UAE</b><small>UAE dirhams · AED</small></span><span class="arrow">›</span></button></div></div>`;return}
@@ -456,7 +467,7 @@ function render(o={}){
       <div class="metric-card metric-total"><div class="metric-label"><i data-lucide="landmark"></i> Total EMI outstanding</div><div class="metric-value">${fmt(sumC(activeDebts(),'balance'),S.cur)}</div></div>
       <div class="metric-card metric-owed"><div class="metric-label"><i data-lucide="users"></i> Total owed to people</div><div class="metric-value">${fmt(owed,S.cur)}</div></div>
     </div>
-    <div class="card"><div class="section-heading"><div><div class="section-kicker">UP NEXT</div><h2 style="margin:3px 0 0">Due in the next 7 days</h2></div><i data-lucide="calendar-days"></i></div>${up.length?up.map(upRow).join(''):'<div class="empty-state"><i data-lucide="check-circle-2"></i><span>All clear — no EMIs or reminders due this week.</span></div>'}</div>
+    ${financialPulseCard()}<div class="card"><div class="section-heading"><div><div class="section-kicker">UP NEXT</div><h2 style="margin:3px 0 0">Due in the next 7 days</h2></div><i data-lucide="calendar-days"></i></div>${up.length?up.map(upRow).join(''):'<div class="empty-state"><i data-lucide="check-circle-2"></i><span>All clear — no EMIs or reminders due this week.</span></div>'}</div>
     <div class="card"><div class="section-heading"><div><div class="section-kicker">SPENDING CONTROL</div><h2 style="margin:3px 0 0">Spending vs budget</h2></div><i data-lucide="chart-no-axes-combined"></i></div>${budgetBars()}</div>
     <div class="card"><h2 style="margin-top:0">Your next best move</h2><p class="mute">Use AI Coach for a practical repayment order based on your balances, interest rates, and monthly cash flow.</p><button onclick="go('ai')">Build my debt plan ↗</button></div>
     <button onclick="db.auth.signOut()" class="ghost">Sign out</button>`}
@@ -477,6 +488,17 @@ function render(o={}){
   if(S.tab=='debts'){
     a.innerHTML=`<h1>Debts and EMIs</h1><div class="card"><input id="dn" placeholder="Loan name"><div class="grid"><input id="db" type="number" inputmode="decimal" placeholder="Balance left"><input id="de" type="number" inputmode="decimal" placeholder="Monthly EMI"><input id="dr" type="number" inputmode="decimal" placeholder="Interest % / year"><input id="dd" type="number" inputmode="numeric" placeholder="Due day (1-31)"></div>${cs('dc')}<button onclick="addDebt()">Add debt</button></div>
     <div class="card">${S.debts.length?S.debts.map(x=>{const cl=+x.balance<=0,c=x.currency||'INR';return `<div class="loan"><div class="row" style="border:0;padding-bottom:4px"><div>${esc(x.name)}<div class="mute">${cl?'Cleared 🎉':`Due on ${x.due_day} · ${x.rate}% · clears in ${ym(solo(x))}`}</div></div><div>${D(x.emi,c)}<div class="mute">${fmt(x.balance,c)} left</div><button class="ghost" onclick="del('debts','${x.id}')">✕</button></div></div>${cl?'':payBox(x,'l')}</div>`}).join(''):'<div class="mute">No debts added.</div>'}</div>`}
+  if(S.tab==='debts'){
+    const loans=activeDebts().map(x=>({name:x.name,balance:cv(x.balance,x.currency||S.cur,S.cur),rate:x.rate,emi:cv(x.emi,x.currency||S.cur,S.cur)}));
+    const avalanche=PocketPlanFinance.debtPayoff(loans,S.extra,'avalanche');
+    const snowball=PocketPlanFinance.debtPayoff(loans,S.extra,'snowball');
+    const strategyText=p=>p.months===null?'At this rate, full repayment is not projected within 50 years':ym(p.months)+' · estimated interest '+fmt(p.interest,S.cur);
+    a.insertAdjacentHTML('beforeend',`<div class="card"><div class="section-heading"><h2>Debt payoff simulator</h2><i data-lucide="calculator"></i></div>
+    <p class="mute">Compare repaying highest-interest loans first (avalanche) with smallest balances first (snowball). Your minimum EMI amounts remain included.</p>
+    <label for="extraPay">Extra monthly debt payment (${S.cur})</label><input id="extraPay" type="number" min="0" step="100" value="${S.extra}" onchange="S.extra=Math.max(0,Number(this.value)||0);render()">
+    <div class="metric-grid"><div class="metric-card"><div class="metric-label">Avalanche</div><div class="metric-value" style="font-size:18px">${esc(strategyText(avalanche))}</div></div><div class="metric-card"><div class="metric-label">Snowball</div><div class="metric-value" style="font-size:18px">${esc(strategyText(snowball))}</div></div></div>
+    <p class="mute">Avalanche priority: ${esc(avalanche.order.join(' → ')||'No active loans')}. These are simulations with fixed interest rates, fixed monthly payment capacity and no fees. The estimated figures are not contractual payoff schedules.</p></div>`);
+  }
   if(S.tab=='borrow'){const ps=people(),owed=owedTotal(),open=ps.filter(p=>p.out>0.001).length;
     a.innerHTML=`<h1>People & debts</h1><div class="card"><div class="grid"><div><div class="mute">Total borrowed</div><div class="big">${fmt(ps.reduce((n,p)=>n+p.borrowed,0),S.cur)}</div></div><div><div class="mute">Total repaid</div><div class="big ok">${fmt(ps.reduce((n,p)=>n+p.settled,0),S.cur)}</div></div><div><div class="mute">Outstanding debt</div><div class="big ${owed>0?'bad':'ok'}">${fmt(owed,S.cur)}</div></div></div><div class="mute">${ps.length?`${open} of ${ps.length} ${ps.length===1?'person':'people'} still to be paid`:'Add new borrowing from Transactions → Borrowed.'}</div></div>${ps.length?ps.map(personCard).join(''):'<div class="card"><div class="mute">Nothing borrowed yet. In Transactions choose “Borrowed”, type the person’s name and the amount. The same name always adds to the same person.</div></div>'}<h2>Money lent to others</h2><div class="card"><div class="big ok">${fmt(lentPeople().reduce((n,p)=>n+Math.max(0,p.out),0),S.cur)}</div><div class="mute">Total still owed to you</div></div>${lentPeople().length?lentPeople().map(lentPersonCard).join(''):'<div class="card"><div class="mute">No lending records yet. In Transactions choose “Lent” to record money you gave to someone.</div></div>'}`}
   if(S.tab=='todo'){const loans=activeDebts().map(x=>({x,...nextDue(x)})).sort((p,q)=>p.n-q.n),ps=people().filter(p=>p.out>0.001),td=ldate(),
