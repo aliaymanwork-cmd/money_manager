@@ -656,7 +656,10 @@ const removeMonthlyEmi=guard(async(debtId,month)=>{
 });
 const updateEmiType=guard(async(id,type)=>{
  if(!['fixed','irregular'].includes(type))return;
- const {data,error}=await db.from('debts').update({emi_type:type}).eq('id',id).eq('country',S.country).select().single();if(error)throw error;
+ const fixedAmount=type==='fixed'&&!(+S.debts.find(x=>x.id===id)?.emi>0)?Number(prompt('Enter the fixed monthly EMI amount:', '')):null;
+ if(type==='fixed'&&fixedAmount!==null&&(!Number.isFinite(fixedAmount)||fixedAmount<=0))return toast('Enter a valid fixed EMI amount.',1);
+ const changes={emi_type:type};if(fixedAmount!==null)changes.emi=r2(fixedAmount);
+ const {data,error}=await db.from('debts').update(changes).eq('id',id).eq('country',S.country).select().single();if(error)throw error;
  put('debts',data);render({clear:true});toast('EMI type updated');
 });
 
