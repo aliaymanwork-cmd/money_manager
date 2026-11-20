@@ -576,7 +576,7 @@ async function enablePush(){
  if(Notification.permission==='denied')return toast('Notifications are blocked. Enable PocketPlan notifications in iPhone Settings.',1);
  try{
   const permission=await Notification.requestPermission();if(permission!=='granted')return toast('Notification permission was not granted.',1);
-  const cfg=await fetch(CONFIG.SUPABASE_URL.replace(/\\/$/,'')+'/functions/v1/push-dispatch',{cache:'no-store'});
+  const cfg=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,'')+'/functions/v1/push-dispatch',{cache:'no-store'});
   if(!cfg.ok)throw new Error('Notification service is unavailable');
   const {publicKey,ready}=await cfg.json();if(!publicKey||!ready)throw new Error('Server push keys and scheduled delivery must be configured first.');
   const registration=await navigator.serviceWorker.ready;
