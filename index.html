@@ -355,6 +355,9 @@ const inMonth=(k=S.month)=>S.entries.filter(x=>x.date.startsWith(k));
 const accById=id=>S.accounts.find(x=>x.id===id);
 const activeDebts=()=>S.debts.filter(x=>+x.balance>0);
 const monthEMI=(loan,month=ldate().slice(0,7))=>loan.emi_type==='irregular'?(S.monthlyEmis.find(x=>x.debt_id===loan.id&&x.month.slice(0,7)===month)?.amount??null):(+loan.emi);
+const emiDay=(x,m)=>Number(S.monthlyEmis.find(e=>e.debt_id===x.id&&e.month.slice(0,7)===m)?.due_day)||Number(x.due_day)||1;
+const emiDate=(x,m)=>{const [y,mo]=m.split('-').map(Number);return new Date(y,mo-1,Math.min(emiDay(x,m),new Date(y,mo,0).getDate()))};
+const emiRemaining=(x,m)=>Math.max(0,r2((monthEMI(x,m)||0)-S.entries.filter(e=>e.kind==='loanpay'&&e.debt_id===x.id&&e.date.slice(0,7)===m).reduce((a,e)=>a+Number(e.amount),0)));
 const dueAmount=(loan,month=ldate().slice(0,7))=>{const amount=monthEMI(loan,month);return amount===null?null:Math.min(+loan.balance,Number(amount))};
 const irregularUnset=month=>activeDebts().filter(x=>x.emi_type==='irregular'&&monthEMI(x,month)===null);
 
@@ -368,21 +371,18 @@ function lentPeople(){const m=new Map();[...S.entries].reverse().forEach(e=>{if(
 const eff=e=>(e.kind==='income'||e.kind==='borrowed'||e.kind==='received')?+e.amount:(e.kind==='expense'||e.kind==='settled'||e.kind==='loanpay'||e.kind==='lent')?-e.amount:0;
 function paidAmountThisMonth(x){const k=ldate().slice(0,7);return r2(S.entries.filter(e=>e.kind==='loanpay'&&e.debt_id===x.id&&e.date.startsWith(k)).reduce((s,e)=>s+(+e.amount),0))}
 function paidThisMonth(x){return monthEMI(x)!==null&&paidAmountThisMonth(x)>=monthEMI(x)}
-function nextDue(x){const t=new Date();t.setHours(0,0,0,0);const dim=(y,m)=>new Date(y,m+1,0).getDate(),day=Math.max(1,Math.min(31,+x.due_day||1));
-  let d=new Date(t.getFullYear(),t.getMonth(),Math.min(day,dim(t.getFullYear(),t.getMonth())));const paid=paidThisMonth(x);
-  if(paid)d=new Date(t.getFullYear(),t.getMonth()+1,Math.min(day,dim(t.getFullYear(),t.getMonth()+1)));
-  return{d,n:Math.round((d-t)/864e5),paid}}
+function nextDue(x){const t=new Date();t.setHours(0,0,0,0);let m=ymd(t).slice(0,7),d=emiDate(x,m);if(monthEMI(x,m)!==null&&emiRemaining(x,m)<=0){m=ymd(new Date(t.getFullYear(),t.getMonth()+1,1)).slice(0,7);d=emiDate(x,m)}return{d,month:m,n:Math.round((d-t)/864e5),paid:false}}
 // Loan EMIs + dated reminders coming up (or overdue), soonest first.
 function upcoming(days){const t=new Date();t.setHours(0,0,0,0);const out=[];
-  activeDebts().forEach(x=>{const nd=nextDue(x);if(nd.n<=days)out.push({type:'loan',x,d:nd.d,n:nd.n,amt:dueAmount(x)??0})});
+  activeDebts().forEach(x=>{const nd=nextDue(x);if(nd.n<=days)out.push({type:'loan',x,d:nd.d,n:nd.n,amt:Math.min(+x.balance,emiRemaining(x,nd.month)),month:nd.month})});
   S.todos.forEach(x=>{if(x.done||!x.due_date)return;const d=new Date(x.due_date+'T00:00:00'),n=Math.round((d-t)/864e5);if(n<=days)out.push({type:'todo',x,d,n})});
   S.schedules.filter(x=>x.active).forEach(x=>{const d=new Date(x.next_date+'T00:00:00'),n=Math.round((d-t)/864e5);if(n<=days)out.push({type:'schedule',x,d,n})});
   return out.sort((a,b)=>a.n-b.n)}
-const upRow=o=>`<div class="row"><div>${esc(o.type==='loan'?o.x.name:o.type==='schedule'?o.x.title:o.x.text)}<div class="mute ${o.n<0?'bad':''}">${when(o.n)} · ${dstr(o.d)}${o.type==='todo'?' · Reminder':o.type==='schedule'?' · '+(o.x.kind==='income'?'Expected income':'Scheduled bill'):''}</div></div><div>${o.type==='loan'?D(o.amt,o.x.currency||'INR'):o.type==='schedule'?D(o.x.amount,o.x.currency||S.cur):''}</div></div>`;
+const upRow=o=>`<div class="row"><div>${esc(o.type==='loan'?o.x.name:o.type==='schedule'?o.x.title:o.x.text)}<div class="mute ${o.n<0?'bad':''}">${when(o.n)} · ${dstr(o.d)}${o.type==='todo'?' · Reminder':o.type==='schedule'?' · '+(o.x.kind==='income'?'Expected income':'Scheduled bill'):''}</div></div><div>${o.type==='loan'?D(o.amt,o.x.currency||'INR')+(o.amt>0?'<details><summary class="paylink">Pay EMI</summary>'+payBox(o.x,'h',o.month)+'</details>':''):o.type==='schedule'?D(o.x.amount,o.x.currency||S.cur):''}</div></div>`;
 function accSel(id,label){const last=S.lastAcc&&accById(S.lastAcc)?S.lastAcc:(S.accounts[0]?S.accounts[0].id:'');
   return `<label class="mute" id="${id}-l" for="${id}">${label}</label><select id="${id}">${S.accounts.map(a=>`<option value="${a.id}" ${a.id===last?'selected':''}>${esc(a.name)} · ${fmt(a.balance,a.currency||S.cur)}</option>`).join('')}<option value="">${S.accounts.length?'No account (don’t track)':'No accounts yet (add one in Accounts)'}</option></select>`}
-function payBox(x,pre){const id=pre+'-'+x.id,def=r2(Math.min(dueAmount(x)??0,+x.balance));
-  return `<div class="paybox" data-id="${x.id}"><div class="grid"><div><label class="mute" for="pa-${id}">Amount paying</label><input class="pa" id="pa-${id}" type="number" inputmode="decimal" min="0" step="any" value="${def||''}" placeholder="${x.emi_type==='irregular'&&monthEMI(x)===null?'Set this month’s EMI first':'Amount'}"></div><div>${accSel('ps-'+id,'Pay from account')}</div></div><button onclick="payLoan(this)">Pay now</button></div>`}
+function payBox(x,pre,month=ldate().slice(0,7)){const id=pre+'-'+x.id,def=r2(Math.min(emiRemaining(x,month),+x.balance));
+  return `<div class="paybox" data-id="${x.id}" data-month="${month}"><div class="grid"><div><label class="mute" for="pa-${id}">Amount paying</label><input class="pa" id="pa-${id}" type="number" inputmode="decimal" min="0" step="any" value="${def||''}" placeholder="${x.emi_type==='irregular'&&monthEMI(x)===null?'Set this month’s EMI first':'Amount'}"></div><div>${accSel('ps-'+id,'Pay from account')}</div></div><button onclick="payLoan(this)">Pay now</button></div>`}
 function entryRow(x){const acc=x.account_id&&accById(x.account_id),k=x.kind,plus=['income','borrowed','received'].includes(k),cls=k==='income'||k==='received'?'ok':k==='borrowed'?'warn':'bad';
   const tag=k==='borrowed'?'<span class="tag">Borrowed</span>':k==='settled'?'<span class="tag">Repaid</span>':k==='lent'?'<span class="tag">Lent</span>':k==='received'?'<span class="tag">Received back</span>':k==='loanpay'?'<span class="tag">Loan</span>':'';
   return `<div class="row"><div>${tag}${esc(x.title)}<div class="mute">${esc(x.category)} · ${x.date}${acc?' · '+esc(acc.name):''}${x.person?' · '+esc(x.person):''}${x.payment_method?' · '+esc(x.payment_method):''}${x.notes?' · '+esc(x.notes):''}${x.receipt_data?' · <a target="_blank" rel="noopener" href="'+x.receipt_data+'">Receipt</a>':''}</div></div><div><span class="amt"><span class="${cls}">${plus?'+':'−'}</span>${D(x.amount,x.currency||'INR')}</span><button class="ghost" onclick="delEntry('${x.id}')">✕</button></div></div>`}
@@ -456,13 +456,14 @@ function render(o={}){
   if(!S.country){nav.hidden=true;a.classList.add('anim');a.innerHTML=`<div class="welcome"><div class="brand-lockup"><span class="brand-mark">P</span>PocketPlan</div><h1>Which money are you managing?</h1><p class="lead">India and UAE records are kept in separate workspaces.</p><div class="country-grid"><button class="country-card" onclick="chooseCountry('IN')"><span class="flag">🇮🇳</span><span><b>India</b><small>Indian rupees · INR</small></span><span class="arrow">›</span></button><button class="country-card" onclick="chooseCountry('AE')"><span class="flag">🇦🇪</span><span><b>UAE</b><small>UAE dirhams · AED</small></span><span class="arrow">›</span></button></div></div>`;return}
   const keep=(o.tab||o.clear)?null:snap();
   nav.hidden=false;document.body.dataset.tab=S.tab;
-  if(o.tab||!nav.children.length){const tabs=[['home','Overview','layout-dashboard',1,'Overview'],['money','Transactions','arrow-left-right',1,'Activity'],['debts','Loans','landmark',1,'Loans'],['plan','Plan & Goals','target',1,'Plan'],['acc','Accounts','wallet'],['borrow','People & Debts','users'],['todo','Bills & Reminders','calendar-clock'],['reports','Reports','chart-no-axes-combined'],['ai','AI Coach','sparkles'],['settings','Settings','settings-2']];
+  if(o.tab||!nav.children.length){const tabs=[['home','Overview','layout-dashboard',1,'Overview'],['notifications','Alerts','bell',0,'Alerts'],['money','Transactions','arrow-left-right',1,'Activity'],['debts','Loans','landmark',1,'Loans'],['plan','Plan & Goals','target',1,'Plan'],['acc','Accounts','wallet'],['borrow','People & Debts','users'],['todo','Bills & Reminders','calendar-clock'],['reports','Reports','chart-no-axes-combined'],['ai','AI Coach','sparkles'],['settings','Settings','settings-2']];
     const tbtn=([k,l,ic,p,sh],inSheet)=>`<button class="${S.tab==k?'on':''}${p||inSheet?'':' sec'}" onclick="go('${k}')"><i data-lucide="${ic}" aria-hidden="true"></i><span class="lg">${l}</span><span class="sh">${sh||l}</span></button>`;
     nav.innerHTML=`<div class="brand"><span class="brand-mark">P</span>PocketPlan</div>`+tabs.map(t=>tbtn(t)).join('')+`<button class="more-btn${tabs.some(t=>!t[3]&&t[0]==S.tab)?' on':''}" onclick="toggleMore()" aria-label="More pages"><i data-lucide="layout-grid" aria-hidden="true"></i><span>More</span></button><div class="scrim" hidden onclick="toggleMore()"></div><div class="sheet" hidden>${tabs.filter(t=>!t[3]).map(t=>tbtn(t,1)).join('')}</div>`;if(window.lucide)lucide.createIcons();}
   a.classList.toggle('anim',!!o.tab);
   const mon=`<input type="month" value="${S.month}" onchange="S.month=this.value;render()">`;
+  if(S.tab==='notifications'){const alerts=upcoming(7);a.innerHTML='<h1>Notifications</h1><div class="card">'+(alerts.length?alerts.map(o=>'<div class="row"><div><b>'+esc(o.type==='loan'?o.x.name:o.type==='todo'?o.x.text:o.x.title)+'</b><div class="mute">'+when(o.n)+' · '+dstr(o.d)+'</div></div><button onclick="go(\''+(o.type==='loan'?'home':'todo')+'\')">View</button></div>').join(''):'<p class="mute">No upcoming notifications.</p>')+'</div>';}
   if(S.tab=='home'){const p0=payoff(0),p1=payoff(S.extra),up=upcoming(7),have=sumC(S.accounts,'balance'),owed=owedTotal(),lent=lentPeople().reduce((n,p)=>n+Math.max(0,p.out),0);
-    a.innerHTML=`<div class="row"><h1>Overview</h1><button class="secondary-button chip" onclick="switchCountry()">${S.country==='IN'?'🇮🇳 India':'🇦🇪 UAE'} · Switch</button></div>${mon}
+    a.innerHTML=`<div class="row"><h1>Overview</h1><button class="secondary-button" onclick="go('notifications')" aria-label="Notifications"><i data-lucide="bell"></i> ${up.length}</button><button class="secondary-button chip" onclick="switchCountry()">${S.country==='IN'?'🇮🇳 India':'🇦🇪 UAE'} · Switch</button></div>${mon}
     <div class="card hero balance-hero"><div class="hero-kicker">Money in your accounts</div><div class="big balance-total">${fmt(have,S.cur)}</div><div class="hero-sub">Recorded balances · ${S.cur}</div><div class="flow"><div class="flow-bar"><i class="${t.exp>t.inc?'over':''}" style="width:${t.inc>0?Math.min(100,t.exp/t.inc*100):(t.exp>0?100:0)}%"></i></div><div class="flow-legend"><span>Spent <b>${fmt(t.exp,S.cur)}</b> of <b>${fmt(t.inc,S.cur)}</b> this month</span><span><b>${fmt(t.left,S.cur)}</b> left after EMIs</span></div></div></div>
     <div class="metric-grid">
       <div class="metric-card metric-income"><div class="metric-label"><i data-lucide="trending-up"></i> Income this month</div><div class="metric-value">${fmt(t.inc,S.cur)}</div></div>
@@ -495,7 +496,7 @@ function render(o={}){
     ${irregularUnset(ldate().slice(0,7)).length?'<div class="card"><p class="warn">⚠ '+irregularUnset(ldate().slice(0,7)).length+' irregular loan(s) need an EMI amount for this month. These are excluded from EMI totals until you enter the amounts.</p></div>':''}
     <div class="card">${S.debts.length?S.debts.map(x=>{const cl=+x.balance<=0,c=x.currency||'INR',irregular=x.emi_type==='irregular',current=monthEMI(x),schedule=S.monthlyEmis.filter(m=>m.debt_id===x.id).sort((a,b)=>a.month.localeCompare(b.month));return `<div class="loan"><div class="row" style="border:0;padding-bottom:4px"><div><b>${esc(x.name)}</b><div class="mute">${cl?'Cleared 🎉':`Due on day ${x.due_day} · ${x.rate}% interest · ${irregular?'Irregular monthly EMI':'Fixed monthly EMI'}`}</div></div><div>${irregular?(current===null?'<span class="warn">Not set this month</span>':D(current,c)):D(x.emi,c)}<div class="mute">${fmt(x.balance,c)} left</div><button class="ghost" onclick="del('debts','${x.id}')">✕</button></div></div>
     <label class="mute">EMI type</label><select aria-label="EMI type for ${esc(x.name)}" onchange="updateEmiType('${x.id}',this.value)"><option value="fixed" ${!irregular?'selected':''}>Fixed EMI</option><option value="irregular" ${irregular?'selected':''}>Irregular EMI</option></select>
-    ${irregular?`<div class="card" style="margin-top:12px"><b>Monthly EMI schedule</b><p class="mute">Select any month and enter its planned EMI. You can add past or future months separately.</p><div class="grid"><input type="month" id="emimonth-${x.id}" value="${ldate().slice(0,7)}"><input type="number" min="0.01" step="0.01" inputmode="decimal" id="emiamount-${x.id}" placeholder="Amount for selected month"></div><button onclick="saveMonthlyEmi('${x.id}',document.getElementById('emimonth-${x.id}').value,document.getElementById('emiamount-${x.id}').value)">Save this month's EMI</button>${schedule.length?schedule.map(m=>`<div class="row"><span>${esc(m.month.slice(0,7))}</span><span>${D(m.amount,c)} <button class="ghost" onclick="removeMonthlyEmi('${x.id}','${m.month.slice(0,7)}')" aria-label="Remove monthly EMI">✕</button></span></div>`).join(''):'<p class="mute">No months configured yet.</p>'}</div>`:''}
+    ${irregular?`<div class="card" style="margin-top:12px"><b>Monthly EMI schedule</b><p class="mute">Select any month and enter its planned EMI. You can add past or future months separately.</p><div class="grid"><input type="month" id="emimonth-${x.id}" value="${ldate().slice(0,7)}"><input type="number" min="0.01" step="0.01" inputmode="decimal" id="emiamount-${x.id}" placeholder="Amount for selected month"><input id="emiday-${x.id}" type="number" min="1" max="31" value="${x.due_day||1}" aria-label="Due day for selected month"></div><button onclick="saveMonthlyEmi('${x.id}',document.getElementById('emimonth-${x.id}').value,document.getElementById('emiamount-${x.id}').value,document.getElementById('emiday-${x.id}').value)">Save this month's EMI</button>${schedule.length?schedule.map(m=>`<div class="row"><span>${esc(m.month.slice(0,7))}</span><span>${D(m.amount,c)} · Day ${m.due_day||x.due_day||1} <button class="ghost" onclick="removeMonthlyEmi('${x.id}','${m.month.slice(0,7)}')" aria-label="Remove monthly EMI">✕</button></span></div>`).join(''):'<p class="mute">No months configured yet.</p>'}</div>`:''}
     ${cl?'':payBox(x,'l')}</div>`}).join(''):'<div class="mute">No debts added.</div>'}</div>`;
   }
   if(S.tab==='debts'){
@@ -658,7 +659,7 @@ const settle=guard(async(btn,full)=>{
   const amount=full?p.out:r2(box.querySelector('input.sa').value),acc=accById(box.querySelector('select').value)||null,date=box.querySelector('.settle-date').value,method=box.querySelector('.settle-method').value,notes=box.querySelector('.settle-notes').value.trim();
   if(!(amount>0)||!date)return toast('Enter a valid settlement amount and date.',1);
   if(amount>p.out+0.001)return toast(`${p.name} is only owed ${fmt(p.out,S.cur)}.`,1);
-  if(lowBal(acc,amount))return;
+  if(!acc)return toast('Select an account first.',1);if(acc.currency&&acc.currency!==(x.currency||S.cur))return toast('Account and loan currency must match.',1);if(!confirm('Pay '+fmt(amount,x.currency||S.cur)+' from '+acc.name+'?'))return;if(lowBal(acc,amount))return;
   await commit({entry:{kind:'settled',title:'Repaid '+p.name,amount,currency:S.cur,date,category:'Borrowed',person:p.name,account_id:acc?acc.id:null,payment_method:method,notes},acc,delta:-amount});
   rememberAcc(acc?acc.id:'');toast(`Paid ${fmt(amount,S.cur)} to ${p.name}`+(amount>=p.out-0.001?' — all settled ✓':''));render({clear:true});
 });
@@ -666,8 +667,8 @@ const receiveLent=guard(async(btn)=>{const box=btn.closest('.person'),p=lentPeop
 const borrowMore=btn=>{const p=people().find(x=>x.key===decodeURIComponent(btn.closest('.person').dataset.k));S.preset={k:'borrowed',pn:p?p.name:''};go('money')};
 const payLoan=guard(async btn=>{
   const box=btn.closest('.paybox'),x=S.debts.find(d=>d.id===box.dataset.id);if(!x)return;
-  const amount=r2(box.querySelector('input.pa').value),acc=accById(box.querySelector('select').value)||null;
-  if(x.emi_type==='irregular'&&monthEMI(x)===null)return toast('Set the planned EMI for this month before recording a payment.',1);
+  const amount=r2(box.querySelector('input.pa').value),month=box.dataset.month||ldate().slice(0,7),acc=accById(box.querySelector('select').value)||null;
+  if(x.emi_type==='irregular'&&monthEMI(x,month)===null)return toast('Set the planned EMI for this month before recording a payment.',1);
   if(!(amount>0))return toast('Enter the amount you are paying.',1);
   if(amount>+x.balance+0.001)return toast(`Only ${fmt(x.balance,x.currency||S.cur)} is left on this loan.`,1);
   if(lowBal(acc,amount))return;
@@ -691,11 +692,11 @@ const delEntry=guard(async id=>{
 const addBudget=guard(async()=>{const category=$('#bc').value.trim(),amount=+$('#ba').value;if(!category||!Number.isFinite(amount)||amount<=0)return toast('Enter a category and a budget greater than zero.',1);return add('budgets',{category,amount,currency:$('#bu').value,carryover:!!$('#bcarry')?.checked},{onConflict:'user_id,category,country'})});
 const addAcc=guard(async()=>{const name=$('#an').value.trim(),balance=+$('#ab').value;if(!name||!Number.isFinite(balance)||balance<0)return toast('Enter an account name and a valid non-negative balance.',1);return add('accounts',{name,kind:$('#at').value,balance,currency:$('#ac').value})});
 const addDebt=guard(async()=>{const name=$('#dn').value.trim(),balance=+$('#db').value,emi=+$('#de').value,rate=+$('#dr').value||0,due=+$('#dd').value||1,emi_type=$('#emiType').value;if(!name||!Number.isFinite(balance)||balance<=0||(emi_type==='fixed'&&(!Number.isFinite(emi)||emi<=0))||rate<0||due<1||due>31)return toast('Check the loan name, balance, EMI, interest rate, and due day (1–31).',1);return add('debts',{name,balance,emi:emi_type==='irregular'?0:emi,emi_type,rate,due_day:due,currency:$('#dc').value})});
-const saveMonthlyEmi=guard(async(debtId,month,amount)=>{
+const saveMonthlyEmi=guard(async(debtId,month,amount,day)=>{
  const loan=S.debts.find(x=>x.id===debtId);if(!loan||loan.emi_type!=='irregular')return;
  if(!/^\\d{4}-(0[1-9]|1[0-2])$/.test(month))return toast('Choose a valid month.',1);
  const n=Number(amount);if(!Number.isFinite(n)||n<=0)return toast('Enter an EMI amount greater than zero.',1);
- const row={debt_id:debtId,country:S.country,month:month+'-01',amount:r2(n)};
+ const dueDay=Number(day);if(!Number.isInteger(dueDay)||dueDay<1||dueDay>31)return toast('Choose a day from 1 to 31.',1);const row={debt_id:debtId,country:S.country,month:month+'-01',amount:r2(n),due_day:dueDay};
  const {data,error}=await db.from('debt_monthly_emis').upsert(row,{onConflict:'debt_id,month'}).select().single();if(error)throw error;
  const i=S.monthlyEmis.findIndex(x=>x.debt_id===debtId&&x.month===row.month);if(i<0)S.monthlyEmis.push(data);else S.monthlyEmis[i]=data;
  toast('Monthly EMI saved');render({clear:true});
