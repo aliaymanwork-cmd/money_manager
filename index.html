@@ -557,17 +557,14 @@ const SORT={accounts:(a,b)=>a.name.localeCompare(b.name),budgets:(a,b)=>a.catego
 function put(key,row){const i=S[key].findIndex(x=>x.id===row.id);if(i>=0)S[key][i]=row;else S[key].push(row);if(SORT[key])S[key].sort(SORT[key])}
 async function add(t,row,opt){row.country=S.country;const q=opt?db.from(t).upsert(row,opt):db.from(t).insert(row);const{data,error}=await q.select().single();if(error){fail(error);return false}put(t,data);toast('Saved');render({clear:true});return true}
 // Save an entry, then move the linked account / loan balance. Rolls back if the second step fails.
-async function commit({entry,acc,delta=0,debt,newDebtBal}){
-  const{data:e,error}=await db.from('entries').insert({...entry,country:S.country}).select().single();if(error)throw error;
-  const oldAcc=acc?+acc.balance:null;
-  try{
-    if(acc){const nb=r2(oldAcc+delta),r=await db.from('accounts').update({balance:nb}).eq('id',acc.id);if(r.error)throw r.error;acc.balance=nb}
-    if(debt){const r=await db.from('debts').update({balance:newDebtBal}).eq('id',debt.id);if(r.error)throw r.error;debt.balance=newDebtBal}
-  }catch(err){
-    await db.from('entries').delete().eq('id',e.id);
-    if(acc&&+acc.balance!==oldAcc){await db.from('accounts').update({balance:oldAcc}).eq('id',acc.id);acc.balance=oldAcc}
-    throw err}
-  S.entries.unshift(e);S.entries.sort((a,b)=>b.date.localeCompare(a.date));
+// All ledger edits use one authenticated PostgreSQL transaction via Supabase RPC.
+async function commit({entry,acc,debt}){
+  const {data,error}=await db.rpc('pocketplan_record_entry',{p_entry:{...entry,country:S.country}});
+  if(error)throw error;
+  if(acc)acc.balance=r2(+acc.balance+eff(data));
+  if(debt)debt.balance=r2(+debt.balance-(+data.amount));
+  S.entries.unshift(data);
+  S.entries.sort((a,b)=>b.date.localeCompare(a.date));
 }
 const rememberAcc=id=>{S.lastAcc=id;try{localStorage.setItem('mp:acc',id)}catch(e){}};
 const lowBal=(acc,amt)=>acc&&+acc.balance-amt<0&&!confirm(`This will take “${acc.name}” below zero (balance ${fmt(acc.balance,S.cur)}). Continue?`);
@@ -613,12 +610,14 @@ const delEntry=guard(async id=>{
   const acc=e.account_id&&accById(e.account_id),debt=e.kind==='loanpay'&&e.debt_id&&S.debts.find(d=>d.id===e.debt_id),notes=[];
   if(acc)notes.push(`“${acc.name}” balance goes ${eff(e)>0?'down':'up'} by ${fmt(Math.abs(eff(e)),S.cur)}.`);
   if(debt)notes.push(`“${debt.name}” balance goes up by ${fmt(e.amount,S.cur)}.`);
-  if(notes.length&&!confirm('Delete this entry?\n\n'+notes.join('\n')))return;
-  const{error}=await db.from('entries').delete().eq('id',id);if(error)return fail(error);
+  if(!confirm('Delete this entry?'+(notes.length?'\\n\\n'+notes.join('\\n'):'')))return;
+  const {error}=await db.rpc('pocketplan_delete_entry',{p_id:id,p_country:S.country});
+  if(error)throw error;
   S.entries=S.entries.filter(x=>x.id!==id);
-  if(acc){const nb=r2(+acc.balance-eff(e)),r=await db.from('accounts').update({balance:nb}).eq('id',acc.id);if(r.error)fail(r.error);else acc.balance=nb}
-  if(debt){const nb=r2(+debt.balance+ +e.amount),r=await db.from('debts').update({balance:nb}).eq('id',debt.id);if(r.error)fail(r.error);else debt.balance=nb}
-  render();
+  if(acc)acc.balance=r2(+acc.balance-eff(e));
+  if(debt)debt.balance=r2(+debt.balance+(+e.amount));
+  toast('Transaction deleted and balances updated together.');
+  render({clear:true});
 });
 const addBudget=guard(async()=>{const category=$('#bc').value.trim(),amount=+$('#ba').value;if(!category||!Number.isFinite(amount)||amount<=0)return toast('Enter a category and a budget greater than zero.',1);return add('budgets',{category,amount,currency:$('#bu').value,carryover:!!$('#bcarry')?.checked},{onConflict:'user_id,category,country'})});
 const addAcc=guard(async()=>{const name=$('#an').value.trim(),balance=+$('#ab').value;if(!name||!Number.isFinite(balance)||balance<0)return toast('Enter an account name and a valid non-negative balance.',1);return add('accounts',{name,kind:$('#at').value,balance,currency:$('#ac').value})});
