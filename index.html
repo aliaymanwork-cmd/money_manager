@@ -4,7 +4,7 @@
 <link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#f1f3f8" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#0d1020" media="(prefers-color-scheme: dark)"><meta name="color-scheme" content="light dark"><link rel="apple-touch-icon" href="/icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><script src="/config.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400..800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://unpkg.com/lucide@latest"></script><script src="/finance.js"></script>
 <style>
 /* PocketPlan — one design system (mobile-first). Ink indigo + marigold accent. */
 :root{
@@ -328,7 +328,7 @@ const INCOME_CATEGORIES={'Income':['Salary','Freelance / Side Income','Business 
 const categoryOptions=(includeIncome=false,selected='')=>Object.entries({...CATEGORY_TREE,...(includeIncome?INCOME_CATEGORIES:{})}).map(([group,items])=>`<optgroup label="${esc(group)}">${items.map(label=>{const value=group+' / '+label;return `<option value="${esc(value)}" ${selected===value?'selected':''}>${esc(label)}</option>`}).join('')}</optgroup>`).join('');
 const cap=s=>String(s).replace(/\b[a-z]/g,c=>c.toUpperCase());
 const categoryLabel=value=>String(value||'').includes(' / ')?String(value).split(' / ').slice(1).join(' / '):String(value||'Uncategorized / Cash Spent');
-let S={tab:'home',country:'',month:new Date().toLocaleDateString('en-CA').slice(0,7),entries:[],debts:[],todos:[],accounts:[],budgets:[],goals:[],assets:[],schedules:[],rate:24,cur:'INR',extra:0,ai:'',busy:false,lastAcc:'',preset:null,privacy:false};
+let S={tab:'home',country:'',month:new Date().toLocaleDateString('en-CA').slice(0,7),entries:[],debts:[],monthlyEmis:[],todos:[],accounts:[],budgets:[],goals:[],assets:[],schedules:[],rate:24,cur:'INR',extra:0,ai:'',busy:false,lastAcc:'',preset:null,privacy:false};
 try{S.lastAcc=localStorage.getItem('mp:acc')||''}catch(e){}
 // ---- small helpers -------------------------------------------------------
 const r2=n=>Math.round((+n+Number.EPSILON)*100)/100;
@@ -354,6 +354,10 @@ const inMonth=(k=S.month)=>S.entries.filter(x=>x.date.startsWith(k));
 // ---- accounts, loans, borrowed ------------------------------------------
 const accById=id=>S.accounts.find(x=>x.id===id);
 const activeDebts=()=>S.debts.filter(x=>+x.balance>0);
+const monthEMI=(loan,month=ldate().slice(0,7))=>loan.emi_type==='irregular'?(S.monthlyEmis.find(x=>x.debt_id===loan.id&&x.month.slice(0,7)===month)?.amount??null):(+loan.emi);
+const dueAmount=(loan,month=ldate().slice(0,7))=>{const amount=monthEMI(loan,month);return amount===null?null:Math.min(+loan.balance,Number(amount))};
+const irregularUnset=month=>activeDebts().filter(x=>x.emi_type==='irregular'&&monthEMI(x,month)===null);
+
 const pkey=s=>String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
 // Same name (ignoring case/extra spaces) = same person; borrowed adds up, settled subtracts.
 function people(){const m=new Map();[...S.entries].reverse().forEach(e=>{if(e.kind!=='borrowed'&&e.kind!=='settled')return;const k=pkey(e.person);if(!k)return;let p=m.get(k);if(!p){p={key:k,name:String(e.person).trim().replace(/\s+/g,' '),borrowed:0,settled:0,rows:[]};m.set(k,p)}if(e.kind==='borrowed')p.borrowed+=+e.amount;else p.settled+=+e.amount;p.rows.unshift(e)});
@@ -362,22 +366,23 @@ const owedTotal=()=>people().reduce((s,p)=>s+Math.max(0,p.out),0);
 function lentPeople(){const m=new Map();[...S.entries].reverse().forEach(e=>{if(e.kind!=='lent'&&e.kind!=='received')return;const k=pkey(e.person);if(!k)return;let p=m.get(k);if(!p){p={key:k,name:String(e.person).trim().replace(/\s+/g,' '),lent:0,received:0,rows:[]};m.set(k,p)}if(e.kind==='lent')p.lent+=+e.amount;else p.received+=+e.amount;p.rows.unshift(e)});return [...m.values()].map(p=>({...p,lent:r2(p.lent),received:r2(p.received),out:r2(p.lent-p.received)})).sort((a,b)=>b.out-a.out)}
 // How an entry moved the linked account balance (+ in, − out).
 const eff=e=>(e.kind==='income'||e.kind==='borrowed'||e.kind==='received')?+e.amount:(e.kind==='expense'||e.kind==='settled'||e.kind==='loanpay'||e.kind==='lent')?-e.amount:0;
-function paidThisMonth(x){const k=ldate().slice(0,7);return r2(S.entries.filter(e=>e.kind==='loanpay'&&e.debt_id===x.id&&e.date.startsWith(k)).reduce((s,e)=>s+ +e.amount,0))>=+x.emi}
+function paidAmountThisMonth(x){const k=ldate().slice(0,7);return r2(S.entries.filter(e=>e.kind==='loanpay'&&e.debt_id===x.id&&e.date.startsWith(k)).reduce((s,e)=>s+(+e.amount),0))}
+function paidThisMonth(x){return monthEMI(x)!==null&&paidAmountThisMonth(x)>=monthEMI(x)}
 function nextDue(x){const t=new Date();t.setHours(0,0,0,0);const dim=(y,m)=>new Date(y,m+1,0).getDate(),day=Math.max(1,Math.min(31,+x.due_day||1));
   let d=new Date(t.getFullYear(),t.getMonth(),Math.min(day,dim(t.getFullYear(),t.getMonth())));const paid=paidThisMonth(x);
-  if(d<t||paid)d=new Date(t.getFullYear(),t.getMonth()+1,Math.min(day,dim(t.getFullYear(),t.getMonth()+1)));
+  if(paid)d=new Date(t.getFullYear(),t.getMonth()+1,Math.min(day,dim(t.getFullYear(),t.getMonth()+1)));
   return{d,n:Math.round((d-t)/864e5),paid}}
 // Loan EMIs + dated reminders coming up (or overdue), soonest first.
 function upcoming(days){const t=new Date();t.setHours(0,0,0,0);const out=[];
-  activeDebts().forEach(x=>{const nd=nextDue(x);if(nd.n<=days)out.push({type:'loan',x,d:nd.d,n:nd.n,amt:Math.min(+x.emi,+x.balance)})});
+  activeDebts().forEach(x=>{const nd=nextDue(x);if(nd.n<=days)out.push({type:'loan',x,d:nd.d,n:nd.n,amt:dueAmount(x)??0})});
   S.todos.forEach(x=>{if(x.done||!x.due_date)return;const d=new Date(x.due_date+'T00:00:00'),n=Math.round((d-t)/864e5);if(n<=days)out.push({type:'todo',x,d,n})});
   S.schedules.filter(x=>x.active).forEach(x=>{const d=new Date(x.next_date+'T00:00:00'),n=Math.round((d-t)/864e5);if(n<=days)out.push({type:'schedule',x,d,n})});
   return out.sort((a,b)=>a.n-b.n)}
 const upRow=o=>`<div class="row"><div>${esc(o.type==='loan'?o.x.name:o.type==='schedule'?o.x.title:o.x.text)}<div class="mute ${o.n<0?'bad':''}">${when(o.n)} · ${dstr(o.d)}${o.type==='todo'?' · Reminder':o.type==='schedule'?' · '+(o.x.kind==='income'?'Expected income':'Scheduled bill'):''}</div></div><div>${o.type==='loan'?D(o.amt,o.x.currency||'INR'):o.type==='schedule'?D(o.x.amount,o.x.currency||S.cur):''}</div></div>`;
 function accSel(id,label){const last=S.lastAcc&&accById(S.lastAcc)?S.lastAcc:(S.accounts[0]?S.accounts[0].id:'');
   return `<label class="mute" id="${id}-l" for="${id}">${label}</label><select id="${id}">${S.accounts.map(a=>`<option value="${a.id}" ${a.id===last?'selected':''}>${esc(a.name)} · ${fmt(a.balance,a.currency||S.cur)}</option>`).join('')}<option value="">${S.accounts.length?'No account (don’t track)':'No accounts yet (add one in Accounts)'}</option></select>`}
-function payBox(x,pre){const id=pre+'-'+x.id,def=r2(Math.min(+x.emi,+x.balance));
-  return `<div class="paybox" data-id="${x.id}"><div class="grid"><div><label class="mute" for="pa-${id}">Amount paying</label><input class="pa" id="pa-${id}" type="number" inputmode="decimal" min="0" step="any" value="${def}"></div><div>${accSel('ps-'+id,'Pay from account')}</div></div><button onclick="payLoan(this)">Pay now</button></div>`}
+function payBox(x,pre){const id=pre+'-'+x.id,def=r2(Math.min(dueAmount(x)??0,+x.balance));
+  return `<div class="paybox" data-id="${x.id}"><div class="grid"><div><label class="mute" for="pa-${id}">Amount paying</label><input class="pa" id="pa-${id}" type="number" inputmode="decimal" min="0" step="any" value="${def||''}" placeholder="${x.emi_type==='irregular'&&monthEMI(x)===null?'Set this month’s EMI first':'Amount'}"></div><div>${accSel('ps-'+id,'Pay from account')}</div></div><button onclick="payLoan(this)">Pay now</button></div>`}
 function entryRow(x){const acc=x.account_id&&accById(x.account_id),k=x.kind,plus=['income','borrowed','received'].includes(k),cls=k==='income'||k==='received'?'ok':k==='borrowed'?'warn':'bad';
   const tag=k==='borrowed'?'<span class="tag">Borrowed</span>':k==='settled'?'<span class="tag">Repaid</span>':k==='lent'?'<span class="tag">Lent</span>':k==='received'?'<span class="tag">Received back</span>':k==='loanpay'?'<span class="tag">Loan</span>':'';
   return `<div class="row"><div>${tag}${esc(x.title)}<div class="mute">${esc(x.category)} · ${x.date}${acc?' · '+esc(acc.name):''}${x.person?' · '+esc(x.person):''}${x.payment_method?' · '+esc(x.payment_method):''}${x.notes?' · '+esc(x.notes):''}${x.receipt_data?' · <a target="_blank" rel="noopener" href="'+x.receipt_data+'">Receipt</a>':''}</div></div><div><span class="amt"><span class="${cls}">${plus?'+':'−'}</span>${D(x.amount,x.currency||'INR')}</span><button class="ghost" onclick="delEntry('${x.id}')">✕</button></div></div>`}
@@ -396,22 +401,22 @@ function kindChange(){const k=$('#k');if(!k)return;const b=['borrowed','lent','r
 function postRender(){if(S.preset){for(const id in S.preset){const el=document.getElementById(id);if(el)el.value=S.preset[id]}S.preset=null}kindChange();if(window.lucide)lucide.createIcons()}
 async function load(){
   const q=t=>db.from(t);
-  if(!S.country){render();return}
+  if(!S.country){S.monthlyEmis=[];render();return}
   S.cur=S.country==='IN'?'INR':'AED';
   $('#nav').hidden=true;
   $('#app').innerHTML=`<section class="loading-panel"><span class="loading-spinner"></span><h1>Preparing your workspace</h1><p>Securely organising your accounts and latest activity.</p><div class="loading-skeleton"><i></i><i></i><i></i></div></section>`;
   try {
-    const [e,d,t,a,b,s,g,as,sc]=await Promise.all([q('entries').select('*').eq('country',S.country).order('date',{ascending:false}),q('debts').select('*').eq('country',S.country).order('rate',{ascending:false}),q('todos').select('*').eq('country',S.country).order('created'),q('accounts').select('*').eq('country',S.country).order('name'),q('budgets').select('*').eq('country',S.country).order('category'),q('settings').select('*').maybeSingle(),q('goals').select('*').eq('country',S.country).order('created_at'),q('assets').select('*').eq('country',S.country).order('name'),q('schedules').select('*').eq('country',S.country).order('next_date')]);
-    const failed=[e,d,t,a,b,s,g,as,sc].find(x=>x.error);
+    const [e,d,t,a,b,s,g,as,sc,me]=await Promise.all([q('entries').select('*').eq('country',S.country).order('date',{ascending:false}),q('debts').select('*').eq('country',S.country).order('rate',{ascending:false}),q('todos').select('*').eq('country',S.country).order('created'),q('accounts').select('*').eq('country',S.country).order('name'),q('budgets').select('*').eq('country',S.country).order('category'),q('settings').select('*').maybeSingle(),q('goals').select('*').eq('country',S.country).order('created_at'),q('assets').select('*').eq('country',S.country).order('name'),q('schedules').select('*').eq('country',S.country).order('next_date'),q('debt_monthly_emis').select('*').eq('country',S.country).order('month')]);
+    const failed=[e,d,t,a,b,s,g,as,sc,me].find(x=>x.error);
     if(failed){$('#app').innerHTML=`<section class="load-error"><div class="error-emoji">🧩</div><h1>Almost there!</h1><p>We couldn't load this workspace. Please check your database setup and try again.</p><p class="error-detail">${esc(failed.error.message||'Unknown database error')}</p><div class="error-actions"><button onclick="load()">Try again</button><button class="secondary-button" onclick="switchCountry()">Back to countries</button></div></section>`;return}
-    S.entries=e.data||[];S.debts=d.data||[];S.todos=t.data||[];S.accounts=a.data||[];S.budgets=b.data||[];S.goals=g.data||[];S.assets=as.data||[];S.schedules=sc.data||[];if(s.data)S.rate=+s.data.rate;render({tab:true});notifyDue();
+    S.entries=e.data||[];S.debts=d.data||[];S.todos=t.data||[];S.accounts=a.data||[];S.budgets=b.data||[];S.goals=g.data||[];S.assets=as.data||[];S.schedules=sc.data||[];S.monthlyEmis=me.data||[];if(s.data)S.rate=+s.data.rate;render({tab:true});notifyDue();updateAppBadge();
   } catch(err) {
     $('#app').innerHTML=`<section class="load-error"><div class="error-emoji">🌦️</div><h1>Couldn't open this workspace</h1><p>Please check your connection and Supabase configuration, then try again.</p><p class="error-detail">${esc(err?.message||'Unexpected error')}</p><div class="error-actions"><button onclick="load()">Try again</button><button class="secondary-button" onclick="switchCountry()">Back to countries</button></div></section>`;
   }
 }
-function totals(){const m=inMonth(),inc=sumC(m.filter(x=>x.kind=='income'),'amount'),exp=sumC(m.filter(x=>x.kind=='expense'),'amount'),emi=sumC(activeDebts(),'emi');return{inc,exp,emi,left:inc-exp-emi}}
-function emiMonthTotal(){return sumC(activeDebts().filter(x=>!paidThisMonth(x)),'emi')}
-function emiNextMonthTotal(){const now=new Date(),next=new Date(now.getFullYear(),now.getMonth()+1,1);return sumC(activeDebts().filter(x=>{const day=Math.max(1,Math.min(31,+x.due_day||1));const due=new Date(next.getFullYear(),next.getMonth(),Math.min(day,new Date(next.getFullYear(),next.getMonth()+1,0).getDate()));return +x.balance>0&&due.getMonth()===next.getMonth()}),'emi')}
+function totals(){const m=inMonth(),inc=sumC(m.filter(x=>x.kind=='income'),'amount'),exp=sumC(m.filter(x=>x.kind=='expense'),'amount'),emi=activeDebts().reduce((n,x)=>n+(monthEMI(x,S.month)||0),0);return{inc,exp,emi,left:inc-exp-emi}}
+function emiMonthTotal(){return r2(activeDebts().reduce((n,x)=>n+Math.max(0,cv(monthEMI(x)||0,x.currency||'INR',S.cur)-cv(paidAmountThisMonth(x),x.currency||'INR',S.cur)),0))}
+function emiNextMonthTotal(){const now=new Date(),next=new Date(now.getFullYear(),now.getMonth()+1,1);return activeDebts().filter(x=>{const day=Math.max(1,Math.min(31,+x.due_day||1));const due=new Date(next.getFullYear(),next.getMonth(),Math.min(day,new Date(next.getFullYear(),next.getMonth()+1,0).getDate()));return +x.balance>0&&due.getMonth()===next.getMonth()}).reduce((n,x)=>n+cv(monthEMI(x,ymd(next).slice(0,7))||0,x.currency||'INR',S.cur),0)}
 // Avalanche payoff in display currency: highest interest first, freed EMIs roll forward.
 function payoff(extra){
   let d=activeDebts().map(x=>({r:+x.rate,b:cv(x.balance,x.currency||'INR',S.cur),e:cv(x.emi,x.currency||'INR',S.cur)})).sort((a,b)=>b.r-a.r);
@@ -433,8 +438,19 @@ function budgetBars(){const sp={};inMonth().filter(x=>x.kind=='expense').forEach
 function forecastCash(days){const now=new Date();now.setHours(0,0,0,0);const end=new Date(now);end.setDate(end.getDate()+days);let delta=0;const avgExpense=Math.max(0,S.entries.filter(e=>e.kind==='expense'&&e.date>=ymd(new Date(now.getTime()-89*864e5))&&e.date<=ldate()).reduce((n,e)=>n+cv(e.amount,e.currency||'INR',S.cur),0)/90);delta-=avgExpense*days;
   for(const x of S.schedules.filter(v=>v.active)){let d=new Date(x.next_date+'T00:00:00'),guard=0;while(d<now&&guard++<500){if(x.repeat_every==='none')break;if(x.repeat_every==='weekly')d.setDate(d.getDate()+7);else if(x.repeat_every==='monthly')d.setMonth(d.getMonth()+1);else if(x.repeat_every==='yearly')d.setFullYear(d.getFullYear()+1)}guard=0;while(d<=end&&guard++<100){if(d>=now)delta+=(x.kind==='income'?1:-1)*cv(x.amount,x.currency||'INR',S.cur);if(x.repeat_every==='none')break;if(x.repeat_every==='weekly')d.setDate(d.getDate()+7);else if(x.repeat_every==='monthly')d.setMonth(d.getMonth()+1);else if(x.repeat_every==='yearly')d.setFullYear(d.getFullYear()+1)}}
   // Estimate loan EMI outflows by the number of due dates in the selected horizon.
-  for(const x of activeDebts()){const day=Math.max(1,Math.min(31,+x.due_day||1));let d=new Date(now.getFullYear(),now.getMonth(),Math.min(day,new Date(now.getFullYear(),now.getMonth()+1,0).getDate()));if(d<now)d.setMonth(d.getMonth()+1);let guard=0;while(d<=end&&guard++<10){if(!paidThisMonth(x)||d.getMonth()!==now.getMonth())delta-=cv(Math.min(+x.emi,+x.balance),x.currency||'INR',S.cur);d=new Date(d.getFullYear(),d.getMonth()+1,Math.min(day,new Date(d.getFullYear(),d.getMonth()+2,0).getDate()))}}
+  for(const x of activeDebts()){const day=Math.max(1,Math.min(31,+x.due_day||1));let d=new Date(now.getFullYear(),now.getMonth(),Math.min(day,new Date(now.getFullYear(),now.getMonth()+1,0).getDate()));if(d<now)d.setMonth(d.getMonth()+1);let guard=0;while(d<=end&&guard++<10){if(!paidThisMonth(x)||d.getMonth()!==now.getMonth())delta-=cv(dueAmount(x,ymd(d).slice(0,7))||0,x.currency||'INR',S.cur);d=new Date(d.getFullYear(),d.getMonth()+1,Math.min(day,new Date(d.getFullYear(),d.getMonth()+2,0).getDate()))}}
   return {balance:sumC(S.accounts,'balance')+delta,delta,avgExpense}}
+function healthSnapshot(){
+  const t=totals(),cash=sumC(S.accounts,'balance'),debt=sumC(activeDebts(),'balance');
+  return PocketPlanFinance.financialPulse({income:t.inc,expenses:t.exp,emi:emiMonthTotal(),cash,debts:debt,borrowed:owedTotal(),lent:lentPeople().reduce((n,p)=>n+Math.max(0,p.out),0),investments:sumC(S.assets,'value')});
+}
+function financialPulseCard(){
+  const p=healthSnapshot(),runway=p.runway===null?'Not enough records':p.runway.toFixed(1)+' months';
+  return `<div class="card"><div class="section-heading"><div><div class="section-kicker">POCKETPLAN 2.0</div><h2 style="margin:3px 0 0">Your financial pulse</h2></div><i data-lucide="activity"></i></div>
+  <div class="metric-grid"><div class="metric-card"><div class="metric-label">Financial health score</div><div class="metric-value">${p.score===null?"Not enough data":p.score+" / 100"}</div></div><div class="metric-card"><div class="metric-label">Monthly cash surplus</div><div class="metric-value ${p.surplus<0?'bad':'ok'}">${fmt(p.surplus,S.cur)}</div></div><div class="metric-card"><div class="metric-label">Cash runway (current outflow)</div><div class="metric-value">${runway}</div></div><div class="metric-card"><div class="metric-label">Tracked net worth</div><div class="metric-value ${p.netWorth<0?'bad':'ok'}">${fmt(p.netWorth,S.cur)}</div></div></div>
+  ${p.alerts.length?p.alerts.map(item=>`<p class="mute bad">⚠ ${esc(item)}</p>`).join(''):'<p class="mute ok">No immediate warning based on this month’s recorded income, spending and EMIs.</p>'}
+  <p class="mute">Score considers savings surplus, cash runway, debt-service ratio and tracked net worth. Estimates use only your saved ${S.country==='IN'?'India':'UAE'} records. Runway assumes current recorded monthly spending and EMI payments continue; it is not a bank balance or forecast guarantee.</p></div>`;
+}
 function render(o={}){
   const a=$('#app'),t=totals(),nav=$('#nav');
   if(!S.country){nav.hidden=true;a.classList.add('anim');a.innerHTML=`<div class="welcome"><div class="brand-lockup"><span class="brand-mark">P</span>PocketPlan</div><h1>Which money are you managing?</h1><p class="lead">India and UAE records are kept in separate workspaces.</p><div class="country-grid"><button class="country-card" onclick="chooseCountry('IN')"><span class="flag">🇮🇳</span><span><b>India</b><small>Indian rupees · INR</small></span><span class="arrow">›</span></button><button class="country-card" onclick="chooseCountry('AE')"><span class="flag">🇦🇪</span><span><b>UAE</b><small>UAE dirhams · AED</small></span><span class="arrow">›</span></button></div></div>`;return}
@@ -456,7 +472,7 @@ function render(o={}){
       <div class="metric-card metric-total"><div class="metric-label"><i data-lucide="landmark"></i> Total EMI outstanding</div><div class="metric-value">${fmt(sumC(activeDebts(),'balance'),S.cur)}</div></div>
       <div class="metric-card metric-owed"><div class="metric-label"><i data-lucide="users"></i> Total owed to people</div><div class="metric-value">${fmt(owed,S.cur)}</div></div>
     </div>
-    <div class="card"><div class="section-heading"><div><div class="section-kicker">UP NEXT</div><h2 style="margin:3px 0 0">Due in the next 7 days</h2></div><i data-lucide="calendar-days"></i></div>${up.length?up.map(upRow).join(''):'<div class="empty-state"><i data-lucide="check-circle-2"></i><span>All clear — no EMIs or reminders due this week.</span></div>'}</div>
+    ${financialPulseCard()}<div class="card"><div class="section-heading"><div><div class="section-kicker">UP NEXT</div><h2 style="margin:3px 0 0">Due in the next 7 days</h2></div><i data-lucide="calendar-days"></i></div>${up.length?up.map(upRow).join(''):'<div class="empty-state"><i data-lucide="check-circle-2"></i><span>All clear — no EMIs or reminders due this week.</span></div>'}</div>
     <div class="card"><div class="section-heading"><div><div class="section-kicker">SPENDING CONTROL</div><h2 style="margin:3px 0 0">Spending vs budget</h2></div><i data-lucide="chart-no-axes-combined"></i></div>${budgetBars()}</div>
     <div class="card"><h2 style="margin-top:0">Your next best move</h2><p class="mute">Use AI Coach for a practical repayment order based on your balances, interest rates, and monthly cash flow.</p><button onclick="go('ai')">Build my debt plan ↗</button></div>
     <button onclick="db.auth.signOut()" class="ghost">Sign out</button>`}
@@ -475,8 +491,24 @@ function render(o={}){
     <div class="card"><select id="at"><option value="bank">Bank account</option><option value="cash">Cash in hand</option></select><input id="an" placeholder="Name, e.g. SBI savings, Emirates NBD, Wallet"><div class="grid"><input id="ab" type="number" inputmode="decimal" placeholder="Balance">${cs('ac')}</div><button onclick="addAcc()">Add account</button></div>
     <div class="card">${S.accounts.length?S.accounts.map(x=>`<div class="row"><div>${esc(x.name)}<div class="mute">${x.kind=='cash'?'Cash in hand':'Bank'}</div></div><div>${D(x.balance,x.currency)}<button class="ghost" style="color:var(--ok)" onclick="editBal('${x.id}')">Edit</button><button class="ghost" onclick="del('accounts','${x.id}')">✕</button></div></div>`).join(''):'<div class="mute">Add your bank accounts and the cash you hold.</div>'}</div>`}
   if(S.tab=='debts'){
-    a.innerHTML=`<h1>Debts and EMIs</h1><div class="card"><input id="dn" placeholder="Loan name"><div class="grid"><input id="db" type="number" inputmode="decimal" placeholder="Balance left"><input id="de" type="number" inputmode="decimal" placeholder="Monthly EMI"><input id="dr" type="number" inputmode="decimal" placeholder="Interest % / year"><input id="dd" type="number" inputmode="numeric" placeholder="Due day (1-31)"></div>${cs('dc')}<button onclick="addDebt()">Add debt</button></div>
-    <div class="card">${S.debts.length?S.debts.map(x=>{const cl=+x.balance<=0,c=x.currency||'INR';return `<div class="loan"><div class="row" style="border:0;padding-bottom:4px"><div>${esc(x.name)}<div class="mute">${cl?'Cleared 🎉':`Due on ${x.due_day} · ${x.rate}% · clears in ${ym(solo(x))}`}</div></div><div>${D(x.emi,c)}<div class="mute">${fmt(x.balance,c)} left</div><button class="ghost" onclick="del('debts','${x.id}')">✕</button></div></div>${cl?'':payBox(x,'l')}</div>`}).join(''):'<div class="mute">No debts added.</div>'}</div>`}
+    a.innerHTML=`<h1>Debts and EMIs</h1><div class="card"><h2>Add a loan</h2><input id="dn" placeholder="Loan name"><div class="grid"><input id="db" type="number" inputmode="decimal" placeholder="Balance left"><select id="emiType" onchange="document.querySelector('#de').hidden=this.value==='irregular'"><option value="fixed">Fixed EMI</option><option value="irregular">Irregular EMI — different each month</option></select><input id="de" type="number" inputmode="decimal" placeholder="Fixed monthly EMI"><input id="dr" type="number" inputmode="decimal" placeholder="Interest % / year"><input id="dd" type="number" inputmode="numeric" placeholder="Due day (1-31)"></div>${cs('dc')}<button onclick="addDebt()">Add debt</button><p class="mute">For an irregular loan, add the loan first, then enter the amount for each month below. No monthly amount will be assumed automatically.</p></div>
+    ${irregularUnset(ldate().slice(0,7)).length?'<div class="card"><p class="warn">⚠ '+irregularUnset(ldate().slice(0,7)).length+' irregular loan(s) need an EMI amount for this month. These are excluded from EMI totals until you enter the amounts.</p></div>':''}
+    <div class="card">${S.debts.length?S.debts.map(x=>{const cl=+x.balance<=0,c=x.currency||'INR',irregular=x.emi_type==='irregular',current=monthEMI(x),schedule=S.monthlyEmis.filter(m=>m.debt_id===x.id).sort((a,b)=>a.month.localeCompare(b.month));return `<div class="loan"><div class="row" style="border:0;padding-bottom:4px"><div><b>${esc(x.name)}</b><div class="mute">${cl?'Cleared 🎉':`Due on day ${x.due_day} · ${x.rate}% interest · ${irregular?'Irregular monthly EMI':'Fixed monthly EMI'}`}</div></div><div>${irregular?(current===null?'<span class="warn">Not set this month</span>':D(current,c)):D(x.emi,c)}<div class="mute">${fmt(x.balance,c)} left</div><button class="ghost" onclick="del('debts','${x.id}')">✕</button></div></div>
+    <label class="mute">EMI type</label><select aria-label="EMI type for ${esc(x.name)}" onchange="updateEmiType('${x.id}',this.value)"><option value="fixed" ${!irregular?'selected':''}>Fixed EMI</option><option value="irregular" ${irregular?'selected':''}>Irregular EMI</option></select>
+    ${irregular?`<div class="card" style="margin-top:12px"><b>Monthly EMI schedule</b><p class="mute">Select any month and enter its planned EMI. You can add past or future months separately.</p><div class="grid"><input type="month" id="emimonth-${x.id}" value="${ldate().slice(0,7)}"><input type="number" min="0.01" step="0.01" inputmode="decimal" id="emiamount-${x.id}" placeholder="Amount for selected month"></div><button onclick="saveMonthlyEmi('${x.id}',document.getElementById('emimonth-${x.id}').value,document.getElementById('emiamount-${x.id}').value)">Save this month's EMI</button>${schedule.length?schedule.map(m=>`<div class="row"><span>${esc(m.month.slice(0,7))}</span><span>${D(m.amount,c)} <button class="ghost" onclick="removeMonthlyEmi('${x.id}','${m.month.slice(0,7)}')" aria-label="Remove monthly EMI">✕</button></span></div>`).join(''):'<p class="mute">No months configured yet.</p>'}</div>`:''}
+    ${cl?'':payBox(x,'l')}</div>`}).join(''):'<div class="mute">No debts added.</div>'}</div>`;
+  }
+  if(S.tab==='debts'){
+    const loans=activeDebts().filter(x=>x.emi_type!=='irregular').map(x=>({name:x.name,balance:cv(x.balance,x.currency||S.cur,S.cur),rate:x.rate,emi:cv(x.emi,x.currency||S.cur,S.cur)}));
+    const avalanche=PocketPlanFinance.debtPayoff(loans,S.extra,'avalanche');
+    const snowball=PocketPlanFinance.debtPayoff(loans,S.extra,'snowball');
+    const strategyText=p=>p.months===null?'At this rate, full repayment is not projected within 50 years':ym(p.months)+' · estimated interest '+fmt(p.interest,S.cur);
+    a.insertAdjacentHTML('beforeend',`<div class="card"><div class="section-heading"><h2>Debt payoff simulator</h2><i data-lucide="calculator"></i></div>
+    <p class="mute">Compare fixed-EMI loans using avalanche and snowball. Irregular loans are excluded because future payments are not fixed.</p>
+    <label for="extraPay">Extra monthly debt payment (${S.cur})</label><input id="extraPay" type="number" min="0" step="100" value="${S.extra}" onchange="S.extra=Math.max(0,Number(this.value)||0);render()">
+    <div class="metric-grid"><div class="metric-card"><div class="metric-label">Avalanche</div><div class="metric-value" style="font-size:18px">${esc(strategyText(avalanche))}</div></div><div class="metric-card"><div class="metric-label">Snowball</div><div class="metric-value" style="font-size:18px">${esc(strategyText(snowball))}</div></div></div>
+    <p class="mute">Avalanche priority: ${esc(avalanche.order.join(' → ')||'No active loans')}. These are simulations with fixed interest rates, fixed monthly payment capacity and no fees. The estimated figures are not contractual payoff schedules.</p></div>`);
+  }
   if(S.tab=='borrow'){const ps=people(),owed=owedTotal(),open=ps.filter(p=>p.out>0.001).length;
     a.innerHTML=`<h1>People & debts</h1><div class="card"><div class="grid"><div><div class="mute">Total borrowed</div><div class="big">${fmt(ps.reduce((n,p)=>n+p.borrowed,0),S.cur)}</div></div><div><div class="mute">Total repaid</div><div class="big ok">${fmt(ps.reduce((n,p)=>n+p.settled,0),S.cur)}</div></div><div><div class="mute">Outstanding debt</div><div class="big ${owed>0?'bad':'ok'}">${fmt(owed,S.cur)}</div></div></div><div class="mute">${ps.length?`${open} of ${ps.length} ${ps.length===1?'person':'people'} still to be paid`:'Add new borrowing from Transactions → Borrowed.'}</div></div>${ps.length?ps.map(personCard).join(''):'<div class="card"><div class="mute">Nothing borrowed yet. In Transactions choose “Borrowed”, type the person’s name and the amount. The same name always adds to the same person.</div></div>'}<h2>Money lent to others</h2><div class="card"><div class="big ok">${fmt(lentPeople().reduce((n,p)=>n+Math.max(0,p.out),0),S.cur)}</div><div class="mute">Total still owed to you</div></div>${lentPeople().length?lentPeople().map(lentPersonCard).join(''):'<div class="card"><div class="mute">No lending records yet. In Transactions choose “Lent” to record money you gave to someone.</div></div>'}`}
   if(S.tab=='todo'){const loans=activeDebts().map(x=>({x,...nextDue(x)})).sort((p,q)=>p.n-q.n),ps=people().filter(p=>p.out>0.001),td=ldate(),
@@ -507,26 +539,84 @@ function render(o={}){
       <div class="card"><h2>Quick actions & reports</h2><div class="grid"><button onclick="go('money')">＋ Add transaction</button><button onclick="exportCsv()">Export CSV</button><button class="secondary-button" onclick="window.print()">Print / Save PDF</button><button class="secondary-button" onclick="go('ai')">Ask AI Coach</button></div><p class="mute">For PDF, choose “Save as PDF” in your browser's print dialog. Export includes recorded transactions.</p></div>`;
   }
   if(S.tab==='reports'){const months=[...Array(6)].map((_,i)=>{const d=new Date(S.month+'-01');d.setMonth(d.getMonth()-5+i);return d.toISOString().slice(0,7)});const rows=months.map(k=>{const a=S.entries.filter(e=>e.date.startsWith(k)&&e.kind==='income').reduce((n,e)=>n+cv(e.amount,e.currency||'INR',S.cur),0),b=S.entries.filter(e=>e.date.startsWith(k)&&e.kind==='expense').reduce((n,e)=>n+cv(e.amount,e.currency||'INR',S.cur),0);return {k,a,b}});a.innerHTML=`<h1>Reports & analytics</h1>${mon}<div class="card"><h2>Monthly cash flow</h2>${rows.map(r=>`<div style="margin:12px 0"><div class="row"><span>${r.k}</span><span>Income ${fmt(r.a,S.cur)} · Expenses ${fmt(r.b,S.cur)}</span></div><div class="bar"><i style="width:${Math.min(100,r.a/Math.max(1,r.a,r.b)*100)}%"></i></div><div class="bar"><i class="${r.b>r.a?'over':''}" style="width:${Math.min(100,r.b/Math.max(1,r.a,r.b)*100)}%"></i></div></div>`).join('')}<p class="mute">Bars are relative within each month. These reports use recorded transactions only.</p></div><div class="card"><h2>Spending by category · ${S.month}</h2>${Object.entries(inMonth().filter(e=>e.kind==='expense').reduce((o,e)=>{const k=e.category||'General';o[k]=(o[k]||0)+cv(e.amount,e.currency||'INR',S.cur);return o},{})).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="row"><span>${esc(k)}</span><b>${fmt(v,S.cur)}</b></div>`).join('')||'<p class="mute">No expenses for this month.</p>'}</div><div class="card"><h2>Export & print</h2><div class="grid"><button onclick="exportCsv()">Export transactions CSV</button><button onclick="exportExcel()">Export for Excel</button><button onclick="exportBackup()">Download backup JSON</button><button class="secondary-button" onclick="window.print()">Print / Save PDF</button></div><label class="mute" for="backupFile">Restore a PocketPlan JSON backup (same signed-in account and country only)</label><input id="backupFile" type="file" accept="application/json,.json" onchange="restoreBackup(this)"><p class="mute">Keep downloaded backups somewhere private. CSV is suitable for spreadsheets; PDF uses your browser print dialog.</p></div>`}
-  if(S.tab==='settings'){a.innerHTML=`<h1>Settings & privacy</h1><div class="card"><h2>Privacy mode</h2><p class="mute">Hide displayed monetary amounts on this device. This is a screen privacy feature, not a substitute for signing out or device security.</p><button onclick="togglePrivacy()">${S.privacy?'Show balances':'Hide balances'}</button></div><div class="card"><h2>Quick PIN lock</h2><p class="mute">A convenience screen lock for casual privacy. It is not a replacement for Supabase authentication or your device passcode and can be bypassed by someone with developer-tools access.</p><div class="grid"><button onclick="setPin()">Set / change PIN</button><button class="secondary-button" onclick="lockScreen()">Lock now</button><button class="ghost" onclick="removePin()">Remove PIN</button></div></div><div class="card"><h2>Backup & data portability</h2><p class="mute">Download a JSON backup of your current country workspace, or export transactions as CSV.</p><div class="grid"><button onclick="exportBackup()">Download workspace backup</button><button class="secondary-button" onclick="exportCsv()">Export CSV</button><button class="secondary-button" onclick="exportExcel()">Export for Excel</button><button class="secondary-button" onclick="window.print()">Print / Save PDF</button></div></div><div class="card"><h2>Account security</h2><ul><li>Use a unique password and keep Supabase email verification enabled.</li><li>Never put Groq or Supabase service-role keys in browser code.</li><li>Enable Row Level Security on every user-owned table.</li><li>Sign out on shared devices and protect your device with its own passcode/biometrics.</li></ul><button class="secondary-button" onclick="db.auth.signOut()">Sign out</button></div><div class="card"><h2>Delete your account</h2><p class="mute">For safety, account deletion requires an authenticated server-side admin workflow. Do not delete database rows manually without first exporting a backup.</p><p class="mute">Ask the project administrator to delete the Supabase Auth user and associated records securely.</p></div>`}
+  if(S.tab==='settings'){a.innerHTML=`<h1>Settings & privacy</h1>
+  <div class="card"><h2>iPhone push notifications</h2><p class="mute">Receive EMI reminders even when PocketPlan is closed. On iPhone, open this website from the Home Screen icon (iOS 16.4 or later). Allow notifications when prompted. The server must have Web Push keys and a daily scheduled job configured.</p>
+  <div class="grid"><button onclick="enablePush()">Enable push notifications</button><button class="secondary-button" onclick="disablePush()">Disable on this device</button></div>
+  <p class="mute">Reminders: 3 days before, 1 day before and on the due date; plus a monthly reminder if an irregular EMI is not set. Notification text does not display your financial balance.</p>
+  <div class="grid"><label>Timezone<select id="pushTimezone"><option value="Asia/Dubai">UAE (Dubai)</option><option value="Asia/Kolkata">India (Kolkata)</option></select></label><label>Delivery hour<select id="pushHour"><option value="8">8 AM</option><option value="9" selected>9 AM</option><option value="10">10 AM</option><option value="18">6 PM</option></select></label></div><button class="ghost" onclick="savePushSettings()">Save reminder preferences</button>
+  <p class="mute">Home Screen badge counts upcoming unpaid EMIs and months missing irregular EMI amounts, where iOS supports badges. A native iPhone widget requires a separate iOS app.</p></div><div class="card"><h2>Privacy mode</h2><p class="mute">Hide displayed monetary amounts on this device. This is a screen privacy feature, not a substitute for signing out or device security.</p><button onclick="togglePrivacy()">${S.privacy?'Show balances':'Hide balances'}</button></div><div class="card"><h2>Quick PIN lock</h2><p class="mute">A convenience screen lock for casual privacy. It is not a replacement for Supabase authentication or your device passcode and can be bypassed by someone with developer-tools access.</p><div class="grid"><button onclick="setPin()">Set / change PIN</button><button class="secondary-button" onclick="lockScreen()">Lock now</button><button class="ghost" onclick="removePin()">Remove PIN</button></div></div><div class="card"><h2>Backup & data portability</h2><p class="mute">Download a JSON backup of your current country workspace, or export transactions as CSV.</p><div class="grid"><button onclick="exportBackup()">Download workspace backup</button><button class="secondary-button" onclick="exportCsv()">Export CSV</button><button class="secondary-button" onclick="exportExcel()">Export for Excel</button><button class="secondary-button" onclick="window.print()">Print / Save PDF</button></div></div><div class="card"><h2>Account security</h2><ul><li>Use a unique password and keep Supabase email verification enabled.</li><li>Never put Groq or Supabase service-role keys in browser code.</li><li>Enable Row Level Security on every user-owned table.</li><li>Sign out on shared devices and protect your device with its own passcode/biometrics.</li></ul><button class="secondary-button" onclick="db.auth.signOut()">Sign out</button></div><div class="card"><h2>Delete your account</h2><p class="mute">For safety, account deletion requires an authenticated server-side admin workflow. Do not delete database rows manually without first exporting a backup.</p><p class="mute">Ask the project administrator to delete the Supabase Auth user and associated records securely.</p></div>`}
   if(S.tab=='ai'){a.innerHTML=`<div class="ai-heading"><div><h1>AI Finance Coach</h1><p class="mute">A personal finance guide powered by Groq · ${S.country==='IN'?'India / INR':'UAE / AED'} workspace only</p></div><div class="ai-orb">✦</div></div><div class="card ai-welcome"><div class="ai-kicker">YOUR FINANCIAL SNAPSHOT</div><h2>How can I help you today?</h2><p class="mute">Ask about affordability, spending patterns, debt repayment or your next savings goal. Answers use the records saved in this workspace.</p><div class="ai-prompts"><button class="ai-prompt" onclick="promptAI('Review my spending this month and identify the biggest opportunities to save.')"><span>◒</span><b>Review my spending</b><small>Find patterns and opportunities</small></button><button class="ai-prompt" onclick="promptAI('Can I afford a purchase of 5000 in my current financial situation? Use my recorded balances and upcoming bills.')"><span>↗</span><b>Can I afford it?</b><small>Check your cash flow first</small></button><button class="ai-prompt" onclick="promptAI('Help me make a realistic debt repayment plan using my recorded loans, EMIs, borrowed balances and cash flow.')"><span>⇣</span><b>Plan debt repayment</b><small>Build a practical payoff order</small></button><button class="ai-prompt" onclick="promptAI('Help me create a monthly savings plan based on my recorded income, expenses, budgets and upcoming obligations.')"><span>◎</span><b>Improve my budget</b><small>Set a realistic savings target</small></button></div><label class="mute" for="q">Ask your own question</label><textarea id="q" rows="3" placeholder="e.g. Can I afford ₹5,000 this month? What should I reduce first?"></textarea><div class="ai-send-row"><span class="mute">Your Groq key stays on the server.</span><button onclick="ask()">Ask AI <span>↗</span></button></div></div><div class="card ai-answer"><div class="ai-answer-head"><span class="ai-answer-icon">✦</span><div><b>Personalized insight</b><div class="mute">Based on your saved records</div></div></div><pre id="out">${esc(S.ai)||'Your answer will appear here after you ask a question. Groq only receives the current workspace summary provided by PocketPlan.'}</pre></div>`}
   unsnap(keep);postRender();if(o.tab)window.scrollTo(0,0);
 }
 const addSchedule=guard(async()=>{const title=$('#scTitle').value.trim(),amount=Number($('#scAmount').value),next_date=$('#scDate').value,kind=$('#scKind').value,repeat_every=$('#scRepeat').value,currency=$('#scCur').value,category=$('#scCategory').value.trim()||'Scheduled',account_id=$('#scAccount').value||null;if(!title||!Number.isFinite(amount)||amount<=0||!next_date)return toast('Enter a title, positive amount, and next date.',1);return add('schedules',{title,amount,next_date,kind,repeat_every,currency,category,account_id,active:true})});
-const paySchedule=guard(async(id)=>{const x=S.schedules.find(v=>v.id===id);if(!x)return;const acc=accById(x.account_id)||null;await commit({entry:{kind:x.kind,title:x.title,amount:x.amount,currency:x.currency,date:ldate(),category:x.category,account_id:acc?acc.id:null},acc,delta:x.kind==='income'?+x.amount:-x.amount});if(x.repeat_every==='none'){const{error:de}=await db.from('schedules').update({active:false}).eq('id',id);if(de)return fail(de);x.active=false}else{const d=new Date(x.next_date+'T00:00:00');if(x.repeat_every==='weekly')d.setDate(d.getDate()+7);else if(x.repeat_every==='monthly')d.setMonth(d.getMonth()+1);else if(x.repeat_every==='yearly')d.setFullYear(d.getFullYear()+1);const{data:updated,error:ue}=await db.from('schedules').update({next_date:ymd(d)}).eq('id',id).select().single();if(ue)return fail(ue);Object.assign(x,updated)}toast('Scheduled item recorded as paid/received');render({clear:true})});
+const paySchedule=guard(async(id)=>{
+  const x=S.schedules.find(v=>v.id===id);if(!x||!x.active)return;
+  if(!confirm('Record '+x.title+' as paid/received? This updates the linked account balance and next due date together.'))return;
+  const {error}=await db.rpc('pocketplan_pay_schedule',{p_schedule_id:id,p_country:S.country,p_paid_date:ldate()});
+  if(error)throw error;
+  await load();
+  toast('Scheduled payment recorded and next due date updated.');
+});
 function togglePrivacy(){S.privacy=!S.privacy;render({clear:true});toast(S.privacy?'Privacy mode enabled':'Balances visible')}
 function downloadFile(name,content,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
-function exportBackup(){const data={format:'PocketPlan backup v1',exportedAt:new Date().toISOString(),userId:uid,country:S.country,currency:S.cur,entries:S.entries,debts:S.debts,todos:S.todos,accounts:S.accounts,budgets:S.budgets,goals:S.goals,assets:S.assets,schedules:S.schedules};downloadFile(`pocketplan-${S.country}-${ldate()}.json`,JSON.stringify(data,null,2),'application/json');toast('Workspace backup downloaded')}
-const restoreBackup=guard(async(input)=>{const f=input.files?.[0];if(!f)return;let data;try{data=JSON.parse(await f.text())}catch(e){return toast('That backup file is not valid JSON.',1)}if(data?.format!=='PocketPlan backup v1'||data.country!==S.country||data.userId!==uid)return toast('Choose a PocketPlan backup from this signed-in account and the currently selected country.',1);if(!confirm('Restore this backup into the current workspace? Existing records with matching IDs will be updated; records not in the backup will remain. Export a backup first.'))return;const order=[['accounts',data.accounts],['debts',data.debts],['entries',data.entries],['budgets',data.budgets],['todos',data.todos],['goals',data.goals],['assets',data.assets],['schedules',data.schedules]];for(const [table,rows] of order){if(!Array.isArray(rows)||!rows.length)continue;const clean=rows.map(({user_id,...r})=>({...r,country:S.country}));const {error}=await db.from(table).upsert(clean,{onConflict:'id'});if(error)return fail(error)}toast('Backup restored. Reloading workspace…');await load()})
+function exportBackup(){const data={format:'PocketPlan backup v1',monthlyEmis:S.monthlyEmis,exportedAt:new Date().toISOString(),userId:uid,country:S.country,currency:S.cur,entries:S.entries,debts:S.debts,todos:S.todos,accounts:S.accounts,budgets:S.budgets,goals:S.goals,assets:S.assets,schedules:S.schedules};downloadFile(`pocketplan-${S.country}-${ldate()}.json`,JSON.stringify(data,null,2),'application/json');toast('Workspace backup downloaded')}
+const restoreBackup=guard(async(input)=>{const f=input.files?.[0];if(!f)return;let data;try{data=JSON.parse(await f.text())}catch(e){return toast('That backup file is not valid JSON.',1)}if(data?.format!=='PocketPlan backup v1'||data.country!==S.country||data.userId!==uid)return toast('Choose a PocketPlan backup from this signed-in account and the currently selected country.',1);if(!confirm('Restore this backup into the current workspace? Existing records with matching IDs will be updated; records not in the backup will remain. Export a backup first.'))return;const order=[['accounts',data.accounts],['debts',data.debts],['entries',data.entries],['budgets',data.budgets],['todos',data.todos],['goals',data.goals],['assets',data.assets],['schedules',data.schedules],['debt_monthly_emis',data.monthlyEmis]];for(const [table,rows] of order){if(!Array.isArray(rows)||!rows.length)continue;const clean=rows.map(({user_id,...r})=>({...r,country:S.country}));const {error}=await db.from(table).upsert(clean,{onConflict:'id'});if(error)return fail(error)}toast('Backup restored. Reloading workspace…');await load()})
 function monthsUntil(date){if(!date)return 1;const now=new Date(),d=new Date(date+'T00:00:00');return Math.max(1,(d.getFullYear()-now.getFullYear())*12+d.getMonth()-now.getMonth()+(d.getDate()>now.getDate()?1:0))}
 const addAsset=guard(async()=>{const name=$('#assetName').value.trim(),value=Number($('#assetValue').value),currency=$('#assetCur').value;if(!name||!Number.isFinite(value)||value<0)return toast('Enter an asset name and valid value.',1);return add('assets',{name,value,asset_type:$('#assetType').value,currency})});
 const addGoal=guard(async()=>{const name=$('#goalName').value.trim(),target=Number($('#goalTarget').value),saved=Number($('#goalSaved').value||0),deadline=$('#goalDate').value||null;if(!name||!Number.isFinite(target)||target<=0||!Number.isFinite(saved)||saved<0)return toast('Enter a goal name, target, and valid saved amount.',1);return add('goals',{name,target,saved,deadline,currency:S.cur})});
 const contributeGoal=guard(async(id)=>{const g=S.goals.find(x=>x.id===id);if(!g)return;const raw=prompt('How much are you adding to '+g.name+'?', '');if(raw===null)return;const amount=Number(raw);if(!Number.isFinite(amount)||amount<=0)return toast('Enter an amount greater than zero.',1);const saved=+g.saved+amount;const{data,error}=await db.from('goals').update({saved}).eq('id',id).select().single();if(error)return fail(error);put('goals',data);toast('Savings goal updated');render({clear:true})});
 function filterTransactions(value){const list=$('#entryList');if(!list)return;const q=String(value||'').trim().toLowerCase();list.querySelectorAll('.row').forEach(row=>{row.hidden=!!q&&!row.textContent.toLowerCase().includes(q)})}
 function voiceExpense(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return toast('Voice entry is not supported in this browser. Try Chrome or Edge.',1);const r=new SR();r.lang=S.country==='IN'?'en-IN':'en-AE';r.interimResults=false;r.maxAlternatives=1;r.onresult=e=>{const text=e.results?.[0]?.[0]?.transcript||'';const amount=text.match(/(?:₹|rs\.?\s*)?([0-9]+(?:\.[0-9]{1,2})?)/i);const title=text.replace(/(?:₹|rs\.?\s*)?[0-9]+(?:\.[0-9]{1,2})?/i,'').replace(/spent|paid|expense|rupees|dirhams/ig,'').trim();if($('#ti'))$('#ti').value=title||text;if(amount&&$('#am'))$('#am').value=amount[1];toast('Voice captured. Check the details before saving.')};r.onerror=()=>toast('Could not capture voice. You can enter the transaction manually.',1);r.start();toast('Listening… say the description and amount.')}
-function enableReminders(){if(!('Notification' in window))return alert('This browser does not support notifications.');Notification.requestPermission().then(p=>{if(p==='granted'){alert('Notifications enabled. Keep the app open to receive due reminders.');notifyDue()}else alert('Notifications were not enabled. You can change this in browser settings.')})}
+
+// iPhone Home Screen web push: permissions must be requested from a user gesture.
+function pushSupported(){return 'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window&&window.isSecureContext}
+function pushKeyBytes(base64){const padding='='.repeat((4-base64.length%4)%4);const binary=atob((base64+padding).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(binary,c=>c.charCodeAt(0))}
+async function enablePush(){
+ if(!pushSupported())return toast('Push is unavailable. On iPhone use iOS 16.4+ and open PocketPlan from its Home Screen icon.',1);
+ if(Notification.permission==='denied')return toast('Notifications are blocked. Enable PocketPlan notifications in iPhone Settings.',1);
+ try{
+  const cfg=await fetch(CONFIG.SUPABASE_URL.replace(/\/$/,'')+'/functions/v1/push-dispatch',{cache:'no-store'});
+  if(!cfg.ok)throw new Error('Notification service is unavailable');
+  const {publicKey,ready}=await cfg.json();if(!publicKey||!ready)throw new Error('Server push keys and scheduled delivery must be configured first.');
+  const permission=await Notification.requestPermission();if(permission!=='granted')return toast('Notification permission was not granted.',1);
+  const registration=await navigator.serviceWorker.ready;
+  let subscription=await registration.pushManager.getSubscription();
+  if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:pushKeyBytes(publicKey)});
+  const data=subscription.toJSON();
+  const {error}=await db.from('push_subscriptions').upsert({user_id:uid,endpoint:subscription.endpoint,p256dh:data.keys.p256dh,auth:data.keys.auth},{onConflict:'user_id,endpoint'});
+  if(error)throw error;
+  const {error:prefError}=await db.from('push_preferences').upsert({user_id:uid,enabled:true},{onConflict:'user_id'});
+  if(prefError)throw prefError;
+  toast('iPhone push alerts enabled for this device.');
+  render({clear:true});
+ }catch(e){toast('Could not enable push: '+(e.message||e),1)}
+}
+async function disablePush(){
+ try{
+  const registration=await navigator.serviceWorker.ready;
+  const sub=await registration.pushManager.getSubscription();
+  if(sub){const {error}=await db.from('push_subscriptions').delete().eq('endpoint',sub.endpoint);if(error)throw error;await sub.unsubscribe()}
+  toast('Push notifications disabled on this device.');
+  render({clear:true});
+ }catch(e){toast('Could not disable push: '+(e.message||e),1)}
+}
+async function savePushSettings(){
+ const timezone=$('#pushTimezone')?.value||'Asia/Dubai',hour=Number($('#pushHour')?.value);
+ if(!['Asia/Dubai','Asia/Kolkata'].includes(timezone)||!Number.isInteger(hour)||hour<0||hour>23)return toast('Choose a valid time and timezone.',1);
+ const {error}=await db.from('push_preferences').upsert({user_id:uid,timezone,notification_hour:hour,enabled:true,days_before:[3,1,0],notify_irregular_unset:true},{onConflict:'user_id'});
+ if(error)return toast(error.message,1);toast('Reminder preferences saved');
+}
+async function updateAppBadge(){
+ if(!S.country||!('setAppBadge' in navigator))return;
+ const due=activeDebts().filter(x=>{const d=nextDue(x);return d.n<=3&&!d.paid&&monthEMI(x)!==null}).length;
+ const missing=irregularUnset(ldate().slice(0,7)).length;
+ try{if(due+missing)await navigator.setAppBadge(due+missing);else await navigator.clearAppBadge()}catch(_){}
+}
+
+function enableReminders(){enablePush()}
 function notifyDue(){if(!S.country||!('Notification' in window)||Notification.permission!=='granted')return;const today=ldate(),now=new Date();now.setHours(0,0,0,0);const soon=3;
   S.todos.filter(x=>!x.done&&x.due_date).forEach(x=>{const d=new Date(x.due_date+'T00:00:00'),n=Math.round((d-now)/864e5);if(n<=soon){const k='reminder:'+S.country+':'+x.id+':'+x.due_date+':soon';if(!localStorage.getItem(k)){new Notification(n<0?'Overdue reminder':n===0?'Reminder due today':'Reminder due soon',{body:x.text+(n>0?' · '+n+' day(s) left':'')});localStorage.setItem(k,'1')}}});
-  activeDebts().forEach(x=>{const nd=nextDue(x);if(nd.n>soon||nd.paid)return;const k='emi:'+S.country+':'+x.id+':'+ymd(nd.d)+':soon';if(!localStorage.getItem(k)){new Notification(nd.n<0?'EMI overdue':nd.n===0?'EMI due today':'EMI due soon',{body:x.name+' · '+fmt(Math.min(+x.emi,+x.balance),x.currency||S.cur)});localStorage.setItem(k,'1')}});
+  activeDebts().forEach(x=>{const nd=nextDue(x);if(nd.n>soon||nd.paid)return;const k='emi:'+S.country+':'+x.id+':'+ymd(nd.d)+':soon';if(!localStorage.getItem(k)){new Notification(nd.n<0?'EMI overdue':nd.n===0?'EMI due today':'EMI due soon',{body:x.name+' · '+(dueAmount(x)===null?'Monthly EMI not set':fmt(dueAmount(x),x.currency||S.cur))});localStorage.setItem(k,'1')}});
   S.schedules.filter(x=>x.active).forEach(x=>{const d=new Date(x.next_date+'T00:00:00'),n=Math.round((d-now)/864e5);if(n<=soon){const k='schedule:'+S.country+':'+x.id+':'+x.next_date+':soon';if(!localStorage.getItem(k)){new Notification(n<0?'Scheduled item overdue':n===0?'Scheduled item due today':'Scheduled item due soon',{body:x.title+' · '+fmt(x.amount,x.currency||S.cur)});localStorage.setItem(k,'1')}}})}
 setInterval(notifyDue,30*60*1000);
 async function chooseCountry(c){if(!['IN','AE'].includes(c))return;const {data,error}=await db.auth.getSession();if(error||!data.session){login('Please sign in again to open your workspace.');return;}S.country=c;S.cur=c==='IN'?'INR':'AED';S.tab='home';S.ai='';await load()}function switchCountry(){S.country='';S.ai='';S.tab='home';render()}
@@ -535,17 +625,14 @@ const SORT={accounts:(a,b)=>a.name.localeCompare(b.name),budgets:(a,b)=>a.catego
 function put(key,row){const i=S[key].findIndex(x=>x.id===row.id);if(i>=0)S[key][i]=row;else S[key].push(row);if(SORT[key])S[key].sort(SORT[key])}
 async function add(t,row,opt){row.country=S.country;const q=opt?db.from(t).upsert(row,opt):db.from(t).insert(row);const{data,error}=await q.select().single();if(error){fail(error);return false}put(t,data);toast('Saved');render({clear:true});return true}
 // Save an entry, then move the linked account / loan balance. Rolls back if the second step fails.
-async function commit({entry,acc,delta=0,debt,newDebtBal}){
-  const{data:e,error}=await db.from('entries').insert({...entry,country:S.country}).select().single();if(error)throw error;
-  const oldAcc=acc?+acc.balance:null;
-  try{
-    if(acc){const nb=r2(oldAcc+delta),r=await db.from('accounts').update({balance:nb}).eq('id',acc.id);if(r.error)throw r.error;acc.balance=nb}
-    if(debt){const r=await db.from('debts').update({balance:newDebtBal}).eq('id',debt.id);if(r.error)throw r.error;debt.balance=newDebtBal}
-  }catch(err){
-    await db.from('entries').delete().eq('id',e.id);
-    if(acc&&+acc.balance!==oldAcc){await db.from('accounts').update({balance:oldAcc}).eq('id',acc.id);acc.balance=oldAcc}
-    throw err}
-  S.entries.unshift(e);S.entries.sort((a,b)=>b.date.localeCompare(a.date));
+// All ledger edits use one authenticated PostgreSQL transaction via Supabase RPC.
+async function commit({entry,acc,debt}){
+  const {data,error}=await db.rpc('pocketplan_record_entry',{p_entry:{...entry,country:S.country}});
+  if(error)throw error;
+  if(acc)acc.balance=r2(+acc.balance+eff(data));
+  if(debt)debt.balance=r2(+debt.balance-(+data.amount));
+  S.entries.unshift(data);
+  S.entries.sort((a,b)=>b.date.localeCompare(a.date));
 }
 const rememberAcc=id=>{S.lastAcc=id;try{localStorage.setItem('mp:acc',id)}catch(e){}};
 const lowBal=(acc,amt)=>acc&&+acc.balance-amt<0&&!confirm(`This will take “${acc.name}” below zero (balance ${fmt(acc.balance,S.cur)}). Continue?`);
@@ -580,6 +667,7 @@ const borrowMore=btn=>{const p=people().find(x=>x.key===decodeURIComponent(btn.c
 const payLoan=guard(async btn=>{
   const box=btn.closest('.paybox'),x=S.debts.find(d=>d.id===box.dataset.id);if(!x)return;
   const amount=r2(box.querySelector('input.pa').value),acc=accById(box.querySelector('select').value)||null;
+  if(x.emi_type==='irregular'&&monthEMI(x)===null)return toast('Set the planned EMI for this month before recording a payment.',1);
   if(!(amount>0))return toast('Enter the amount you are paying.',1);
   if(amount>+x.balance+0.001)return toast(`Only ${fmt(x.balance,x.currency||S.cur)} is left on this loan.`,1);
   if(lowBal(acc,amount))return;
@@ -591,16 +679,41 @@ const delEntry=guard(async id=>{
   const acc=e.account_id&&accById(e.account_id),debt=e.kind==='loanpay'&&e.debt_id&&S.debts.find(d=>d.id===e.debt_id),notes=[];
   if(acc)notes.push(`“${acc.name}” balance goes ${eff(e)>0?'down':'up'} by ${fmt(Math.abs(eff(e)),S.cur)}.`);
   if(debt)notes.push(`“${debt.name}” balance goes up by ${fmt(e.amount,S.cur)}.`);
-  if(notes.length&&!confirm('Delete this entry?\n\n'+notes.join('\n')))return;
-  const{error}=await db.from('entries').delete().eq('id',id);if(error)return fail(error);
+  if(!confirm('Delete this entry?'+(notes.length?'\\n\\n'+notes.join('\\n'):'')))return;
+  const {error}=await db.rpc('pocketplan_delete_entry',{p_id:id,p_country:S.country});
+  if(error)throw error;
   S.entries=S.entries.filter(x=>x.id!==id);
-  if(acc){const nb=r2(+acc.balance-eff(e)),r=await db.from('accounts').update({balance:nb}).eq('id',acc.id);if(r.error)fail(r.error);else acc.balance=nb}
-  if(debt){const nb=r2(+debt.balance+ +e.amount),r=await db.from('debts').update({balance:nb}).eq('id',debt.id);if(r.error)fail(r.error);else debt.balance=nb}
-  render();
+  if(acc)acc.balance=r2(+acc.balance-eff(e));
+  if(debt)debt.balance=r2(+debt.balance+(+e.amount));
+  toast('Transaction deleted and balances updated together.');
+  render({clear:true});
 });
 const addBudget=guard(async()=>{const category=$('#bc').value.trim(),amount=+$('#ba').value;if(!category||!Number.isFinite(amount)||amount<=0)return toast('Enter a category and a budget greater than zero.',1);return add('budgets',{category,amount,currency:$('#bu').value,carryover:!!$('#bcarry')?.checked},{onConflict:'user_id,category,country'})});
 const addAcc=guard(async()=>{const name=$('#an').value.trim(),balance=+$('#ab').value;if(!name||!Number.isFinite(balance)||balance<0)return toast('Enter an account name and a valid non-negative balance.',1);return add('accounts',{name,kind:$('#at').value,balance,currency:$('#ac').value})});
-const addDebt=guard(async()=>{const name=$('#dn').value.trim(),balance=+$('#db').value,emi=+$('#de').value,rate=+$('#dr').value||0,due=+$('#dd').value||1;if(!name||!Number.isFinite(balance)||balance<=0||!Number.isFinite(emi)||emi<=0||rate<0||due<1||due>31)return toast('Check the loan name, balance, EMI, interest rate, and due day (1–31).',1);return add('debts',{name,balance,emi,rate,due_day:due,currency:$('#dc').value})});
+const addDebt=guard(async()=>{const name=$('#dn').value.trim(),balance=+$('#db').value,emi=+$('#de').value,rate=+$('#dr').value||0,due=+$('#dd').value||1,emi_type=$('#emiType').value;if(!name||!Number.isFinite(balance)||balance<=0||(emi_type==='fixed'&&(!Number.isFinite(emi)||emi<=0))||rate<0||due<1||due>31)return toast('Check the loan name, balance, EMI, interest rate, and due day (1–31).',1);return add('debts',{name,balance,emi:emi_type==='irregular'?0:emi,emi_type,rate,due_day:due,currency:$('#dc').value})});
+const saveMonthlyEmi=guard(async(debtId,month,amount)=>{
+ const loan=S.debts.find(x=>x.id===debtId);if(!loan||loan.emi_type!=='irregular')return;
+ if(!/^\\d{4}-(0[1-9]|1[0-2])$/.test(month))return toast('Choose a valid month.',1);
+ const n=Number(amount);if(!Number.isFinite(n)||n<=0)return toast('Enter an EMI amount greater than zero.',1);
+ const row={debt_id:debtId,country:S.country,month:month+'-01',amount:r2(n)};
+ const {data,error}=await db.from('debt_monthly_emis').upsert(row,{onConflict:'debt_id,month'}).select().single();if(error)throw error;
+ const i=S.monthlyEmis.findIndex(x=>x.debt_id===debtId&&x.month===row.month);if(i<0)S.monthlyEmis.push(data);else S.monthlyEmis[i]=data;
+ toast('Monthly EMI saved');render({clear:true});
+});
+const removeMonthlyEmi=guard(async(debtId,month)=>{
+ if(!confirm('Remove the planned EMI for '+month+'? Recorded payments will not be deleted.'))return;
+ const {error}=await db.from('debt_monthly_emis').delete().eq('debt_id',debtId).eq('month',month+'-01').eq('country',S.country);if(error)throw error;
+ S.monthlyEmis=S.monthlyEmis.filter(x=>!(x.debt_id===debtId&&x.month===month+'-01'));render({clear:true});toast('Monthly EMI removed');
+});
+const updateEmiType=guard(async(id,type)=>{
+ if(!['fixed','irregular'].includes(type))return;
+ const fixedAmount=type==='fixed'&&!(+S.debts.find(x=>x.id===id)?.emi>0)?Number(prompt('Enter the fixed monthly EMI amount:', '')):null;
+ if(type==='fixed'&&fixedAmount!==null&&(!Number.isFinite(fixedAmount)||fixedAmount<=0))return toast('Enter a valid fixed EMI amount.',1);
+ const changes={emi_type:type};if(fixedAmount!==null)changes.emi=r2(fixedAmount);
+ const {data,error}=await db.from('debts').update(changes).eq('id',id).eq('country',S.country).select().single();if(error)throw error;
+ put('debts',data);render({clear:true});toast('EMI type updated');
+});
+
 const addTodo=guard(async()=>{const text=$('#tt').value.trim();if(!text)return toast('Enter a reminder first.',1);return add('todos',{text,due_date:$('#td').value||null,repeat_every:$('#tr')?.value||'none',done:false})});
 const del=guard(async(t,id)=>{
   if(t==='accounts'&&!confirm('Delete this account? Past transactions stay, but are no longer linked to it.'))return;
@@ -651,7 +764,7 @@ async function ask(){
     if(sessionResult?.error||!session){S.ai='Your login session has expired. Please sign in again, then retry your question.';o.textContent=S.ai;return;}
     const t=totals(),sp={};
     inMonth().filter(x=>x.kind==='expense').forEach(x=>sp[x.category]=(sp[x.category]||0)+cv(x.amount,x.currency,S.cur));
-    const summary={note:`Selected financial workspace: ${S.country==='IN'?'India':'UAE'}. Do not convert or combine currencies or infer missing data.`,today:new Date().toLocaleDateString('en-CA'),country:S.country,currency:S.cur,month:S.month,...t,balances:accountTotal,accounts:S.accounts.map(({name,kind,balance,currency})=>({name,kind,balance,currency})),budgets:S.budgets.map(({category,amount,currency})=>({category,amount,currency})),spendByCategory:sp,debts:activeDebts().map(x=>({name:x.name,balance:x.balance,emi:x.emi,rate:x.rate,due_day:x.due_day,currency:x.currency,paidThisMonth:paidThisMonth(x),nextDueDate:ymd(nextDue(x).d)})),borrowedFromPeople:people().map(({name,borrowed,settled,out})=>({name,borrowed,repaid:settled,outstanding:out})),moneyLentToPeople:lentPeople().map(({name,lent,received,out})=>({name,lent,receivedBack:received,outstanding:out})),openTodos:S.todos.filter(x=>!x.done).map(({text,due_date,created,repeat_every})=>({text,due_date:due_date||null,repeat_every:repeat_every||'none',created:created||null})),assets:S.assets.map(({name,asset_type,value,currency})=>({name,asset_type,value,currency})),savingsGoals:S.goals.map(({name,target,saved,deadline,currency})=>({name,target,saved,deadline:deadline||null,currency})),scheduledCashFlows:S.schedules.filter(x=>x.active).map(({title,kind,amount,currency,category,next_date,repeat_every})=>({title,kind,amount,currency,category,next_date,repeat_every})),recentTransactions:S.entries.slice(0,30).map(({date,kind,title,category,amount,currency,person})=>({date,kind,title,category,amount,currency,person:person||undefined}))};
+    const summary={note:`Selected financial workspace: ${S.country==='IN'?'India':'UAE'}. Do not convert or combine currencies or infer missing data.`,today:new Date().toLocaleDateString('en-CA'),country:S.country,currency:S.cur,month:S.month,...t,balances:accountTotal,accounts:S.accounts.map(({name,kind,balance,currency})=>({name,kind,balance,currency})),budgets:S.budgets.map(({category,amount,currency})=>({category,amount,currency})),spendByCategory:sp,debts:activeDebts().map(x=>({name:x.name,balance:x.balance,emi:monthEMI(x),emi_type:x.emi_type||'fixed',rate:x.rate,due_day:x.due_day,currency:x.currency,paidThisMonth:paidThisMonth(x),nextDueDate:ymd(nextDue(x).d)})),borrowedFromPeople:people().map(({name,borrowed,settled,out})=>({name,borrowed,repaid:settled,outstanding:out})),moneyLentToPeople:lentPeople().map(({name,lent,received,out})=>({name,lent,receivedBack:received,outstanding:out})),openTodos:S.todos.filter(x=>!x.done).map(({text,due_date,created,repeat_every})=>({text,due_date:due_date||null,repeat_every:repeat_every||'none',created:created||null})),assets:S.assets.map(({name,asset_type,value,currency})=>({name,asset_type,value,currency})),savingsGoals:S.goals.map(({name,target,saved,deadline,currency})=>({name,target,saved,deadline:deadline||null,currency})),scheduledCashFlows:S.schedules.filter(x=>x.active).map(({title,kind,amount,currency,category,next_date,repeat_every})=>({title,kind,amount,currency,category,next_date,repeat_every})),recentTransactions:S.entries.slice(0,30).map(({date,kind,title,category,amount,currency,person})=>({date,kind,title,category,amount,currency,person:person||undefined}))};
     const controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),45000);
     try{
@@ -674,6 +787,6 @@ function login(msg=''){$('#nav').hidden=true;$('#app').innerHTML=`<section class
 async function signIn(){const email=$('#em').value;const{error}=await db.auth.signInWithPassword({email,password:$('#pw').value});if(error){login(esc(error.message));$('#em').value=email}}
 // Only (re)load when the signed-in user actually changes. Token refreshes and tab re-focus no longer reload the app.
 let uid=null;
-db.auth.onAuthStateChange((ev,s)=>{if(!s){uid=null;S.country='';S.entries=[];S.debts=[];S.todos=[];S.accounts=[];S.budgets=[];login();return}if(s.user.id!==uid){uid=s.user.id;setTimeout(load,0)}});
+db.auth.onAuthStateChange((ev,s)=>{if(!s){uid=null;S.country='';S.entries=[];S.debts=[];S.monthlyEmis=[];S.todos=[];S.accounts=[];S.budgets=[];login();return}if(s.user.id!==uid){uid=s.user.id;setTimeout(load,0)}});
 db.auth.getSession().then(({data})=>{if(!data.session)login()});
 </script></body></html>
