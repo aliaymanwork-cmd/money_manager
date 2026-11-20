@@ -1,5 +1,35 @@
 # PocketPlan — Personal Finance Planner
 
+## PocketPlan 2.0 (2026-11-20)
+
+PocketPlan 2.0 extends the existing single-page app without replacing stored financial records or combining the India/UAE workspaces.
+
+- **Financial Pulse:** monthly cash surplus, estimated cash runway, tracked net worth, and alerts for negative cash flow, low cash reserves and high EMI burden.
+- **Debt payoff simulator:** compare avalanche (highest interest first) and snowball (smallest balance first), with adjustable monthly extra repayments; projections cap at 50 years rather than claiming unpayable balances will clear.
+- **Atomic ledger:** adding/deleting linked transactions, loan repayments and scheduled payments uses authenticated Supabase PostgreSQL functions. A failed operation rolls back both the transaction and account/loan changes.
+- **Regression tests:** finance calculations, API validation, and HTML JavaScript syntax run automatically on the `pocketplan-v2` branch and pull requests.
+
+### Database upgrade and new installations
+
+On an existing database, **do not drop or recreate any tables**. The additive migrations live in:
+
+1. `supabase/migrations/20261120_pocketplan_2_atomic.sql`
+2. `supabase/migrations/20261120_pocketplan_2_schedule.sql`
+
+For a **new** Supabase project, run `schema.sql` first, followed by both migrations in the order above. Deploy the app only after these authenticated RPCs are present. For an existing installation, take an independent backup first and apply only migrations not yet applied.
+
+### Run tests
+
+```sh
+node --test tests/*.test.js
+```
+
+GitHub Actions runs tests after every push. The database integration has been smoke-tested inside a transaction with synthetic test records that were rolled back. That does not replace real-user browser testing for login, receipts, backups, all transaction types, and phone/desktop rendering.
+
+**Release safety:** deploy the `pocketplan-v2` branch as a preview and verify login, posting/reversal, scheduled payments and India/UAE separation before merging to `main`. Never put AI or Supabase service-role secrets into `config.js`.
+
+
+
 A responsive personal finance web app with separate India (INR) and UAE (AED) workspaces. Built with vanilla HTML/CSS/JavaScript, Supabase Auth/Postgres, Vercel serverless functions, and Groq AI.
 
 ## Features
