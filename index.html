@@ -534,7 +534,14 @@ function render(o={}){
   unsnap(keep);postRender();if(o.tab)window.scrollTo(0,0);
 }
 const addSchedule=guard(async()=>{const title=$('#scTitle').value.trim(),amount=Number($('#scAmount').value),next_date=$('#scDate').value,kind=$('#scKind').value,repeat_every=$('#scRepeat').value,currency=$('#scCur').value,category=$('#scCategory').value.trim()||'Scheduled',account_id=$('#scAccount').value||null;if(!title||!Number.isFinite(amount)||amount<=0||!next_date)return toast('Enter a title, positive amount, and next date.',1);return add('schedules',{title,amount,next_date,kind,repeat_every,currency,category,account_id,active:true})});
-const paySchedule=guard(async(id)=>{const x=S.schedules.find(v=>v.id===id);if(!x)return;const acc=accById(x.account_id)||null;await commit({entry:{kind:x.kind,title:x.title,amount:x.amount,currency:x.currency,date:ldate(),category:x.category,account_id:acc?acc.id:null},acc,delta:x.kind==='income'?+x.amount:-x.amount});if(x.repeat_every==='none'){const{error:de}=await db.from('schedules').update({active:false}).eq('id',id);if(de)return fail(de);x.active=false}else{const d=new Date(x.next_date+'T00:00:00');if(x.repeat_every==='weekly')d.setDate(d.getDate()+7);else if(x.repeat_every==='monthly')d.setMonth(d.getMonth()+1);else if(x.repeat_every==='yearly')d.setFullYear(d.getFullYear()+1);const{data:updated,error:ue}=await db.from('schedules').update({next_date:ymd(d)}).eq('id',id).select().single();if(ue)return fail(ue);Object.assign(x,updated)}toast('Scheduled item recorded as paid/received');render({clear:true})});
+const paySchedule=guard(async(id)=>{
+  const x=S.schedules.find(v=>v.id===id);if(!x||!x.active)return;
+  if(!confirm('Record '+x.title+' as paid/received? This updates the linked account balance and next due date together.'))return;
+  const {error}=await db.rpc('pocketplan_pay_schedule',{p_schedule_id:id,p_country:S.country,p_paid_date:ldate()});
+  if(error)throw error;
+  await load();
+  toast('Scheduled payment recorded and next due date updated.');
+});
 function togglePrivacy(){S.privacy=!S.privacy;render({clear:true});toast(S.privacy?'Privacy mode enabled':'Balances visible')}
 function downloadFile(name,content,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function exportBackup(){const data={format:'PocketPlan backup v1',exportedAt:new Date().toISOString(),userId:uid,country:S.country,currency:S.cur,entries:S.entries,debts:S.debts,todos:S.todos,accounts:S.accounts,budgets:S.budgets,goals:S.goals,assets:S.assets,schedules:S.schedules};downloadFile(`pocketplan-${S.country}-${ldate()}.json`,JSON.stringify(data,null,2),'application/json');toast('Workspace backup downloaded')}
