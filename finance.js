@@ -65,11 +65,22 @@
     const runway = essential > 0 ? round(Math.max(0,num(cash))/essential) : null;
     const worth = round(num(cash)+num(investments)+num(lent)-num(debts)-num(borrowed));
     const savingsRate = num(income) > 0 ? round(100*surplus/num(income)) : null;
+    const incomeNumber=num(income), debtServiceRatio=incomeNumber>0 ? num(emi)/incomeNumber : null;
+    const hasData=[income,expenses,emi,cash,debts,borrowed,lent,investments].some(v=>Math.abs(num(v))>0);
+    let score=null;
+    if(hasData){
+      let points=50;
+      if(savingsRate!==null)points+=savingsRate>=20?15:savingsRate>=0?5:-20;
+      if(runway!==null)points+=runway>=6?20:runway>=3?12:runway>=1?4:-15;
+      if(debtServiceRatio!==null)points+=debtServiceRatio>0.4?-15:5;
+      points+=worth>=0?5:-10;
+      score=Math.max(0,Math.min(100,Math.round(points)));
+    }
     const alerts=[];
     if (surplus < 0) alerts.push('Expenses and scheduled minimum repayments exceed recorded income this month.');
     if (essential > 0 && runway < 1) alerts.push('Recorded cash is less than one month of current outflows.');
     if (num(debts)+num(borrowed)>0 && num(emi)>num(income)*0.4 && num(income)>0) alerts.push('Scheduled loan payments exceed 40% of recorded income.');
-    return {surplus, runway, netWorth: worth, savingsRate, alerts};
+    return {surplus, runway, netWorth: worth, savingsRate, debtServiceRatio, score, alerts};
   }
   root.PocketPlanFinance = Object.freeze({ convert, debtPayoff, financialPulse });
 })(globalThis);
