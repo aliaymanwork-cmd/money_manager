@@ -362,10 +362,11 @@ const owedTotal=()=>people().reduce((s,p)=>s+Math.max(0,p.out),0);
 function lentPeople(){const m=new Map();[...S.entries].reverse().forEach(e=>{if(e.kind!=='lent'&&e.kind!=='received')return;const k=pkey(e.person);if(!k)return;let p=m.get(k);if(!p){p={key:k,name:String(e.person).trim().replace(/\s+/g,' '),lent:0,received:0,rows:[]};m.set(k,p)}if(e.kind==='lent')p.lent+=+e.amount;else p.received+=+e.amount;p.rows.unshift(e)});return [...m.values()].map(p=>({...p,lent:r2(p.lent),received:r2(p.received),out:r2(p.lent-p.received)})).sort((a,b)=>b.out-a.out)}
 // How an entry moved the linked account balance (+ in, − out).
 const eff=e=>(e.kind==='income'||e.kind==='borrowed'||e.kind==='received')?+e.amount:(e.kind==='expense'||e.kind==='settled'||e.kind==='loanpay'||e.kind==='lent')?-e.amount:0;
-function paidThisMonth(x){const k=ldate().slice(0,7);return r2(S.entries.filter(e=>e.kind==='loanpay'&&e.debt_id===x.id&&e.date.startsWith(k)).reduce((s,e)=>s+ +e.amount,0))>=+x.emi}
+function paidAmountThisMonth(x){const k=ldate().slice(0,7);return r2(S.entries.filter(e=>e.kind==='loanpay'&&e.debt_id===x.id&&e.date.startsWith(k)).reduce((s,e)=>s+(+e.amount),0))}
+function paidThisMonth(x){return paidAmountThisMonth(x)>=+x.emi}
 function nextDue(x){const t=new Date();t.setHours(0,0,0,0);const dim=(y,m)=>new Date(y,m+1,0).getDate(),day=Math.max(1,Math.min(31,+x.due_day||1));
   let d=new Date(t.getFullYear(),t.getMonth(),Math.min(day,dim(t.getFullYear(),t.getMonth())));const paid=paidThisMonth(x);
-  if(d<t||paid)d=new Date(t.getFullYear(),t.getMonth()+1,Math.min(day,dim(t.getFullYear(),t.getMonth()+1)));
+  if(paid)d=new Date(t.getFullYear(),t.getMonth()+1,Math.min(day,dim(t.getFullYear(),t.getMonth()+1)));
   return{d,n:Math.round((d-t)/864e5),paid}}
 // Loan EMIs + dated reminders coming up (or overdue), soonest first.
 function upcoming(days){const t=new Date();t.setHours(0,0,0,0);const out=[];
@@ -410,7 +411,7 @@ async function load(){
   }
 }
 function totals(){const m=inMonth(),inc=sumC(m.filter(x=>x.kind=='income'),'amount'),exp=sumC(m.filter(x=>x.kind=='expense'),'amount'),emi=sumC(activeDebts(),'emi');return{inc,exp,emi,left:inc-exp-emi}}
-function emiMonthTotal(){return sumC(activeDebts().filter(x=>!paidThisMonth(x)),'emi')}
+function emiMonthTotal(){return r2(activeDebts().reduce((n,x)=>n+Math.max(0,cv(x.emi,x.currency||'INR',S.cur)-cv(paidAmountThisMonth(x),x.currency||'INR',S.cur)),0))}
 function emiNextMonthTotal(){const now=new Date(),next=new Date(now.getFullYear(),now.getMonth()+1,1);return sumC(activeDebts().filter(x=>{const day=Math.max(1,Math.min(31,+x.due_day||1));const due=new Date(next.getFullYear(),next.getMonth(),Math.min(day,new Date(next.getFullYear(),next.getMonth()+1,0).getDate()));return +x.balance>0&&due.getMonth()===next.getMonth()}),'emi')}
 // Avalanche payoff in display currency: highest interest first, freed EMIs roll forward.
 function payoff(extra){
@@ -442,9 +443,9 @@ function healthSnapshot(){
 function financialPulseCard(){
   const p=healthSnapshot(),runway=p.runway===null?'Not enough records':p.runway.toFixed(1)+' months';
   return `<div class="card"><div class="section-heading"><div><div class="section-kicker">POCKETPLAN 2.0</div><h2 style="margin:3px 0 0">Your financial pulse</h2></div><i data-lucide="activity"></i></div>
-  <div class="metric-grid"><div class="metric-card"><div class="metric-label">Monthly cash surplus</div><div class="metric-value ${p.surplus<0?'bad':'ok'}">${fmt(p.surplus,S.cur)}</div></div><div class="metric-card"><div class="metric-label">Cash runway (current outflow)</div><div class="metric-value">${runway}</div></div><div class="metric-card"><div class="metric-label">Tracked net worth</div><div class="metric-value ${p.netWorth<0?'bad':'ok'}">${fmt(p.netWorth,S.cur)}</div></div></div>
+  <div class="metric-grid"><div class="metric-card"><div class="metric-label">Financial health score</div><div class="metric-value">${p.score===null?"Not enough data":p.score+" / 100"}</div></div><div class="metric-card"><div class="metric-label">Monthly cash surplus</div><div class="metric-value ${p.surplus<0?'bad':'ok'}">${fmt(p.surplus,S.cur)}</div></div><div class="metric-card"><div class="metric-label">Cash runway (current outflow)</div><div class="metric-value">${runway}</div></div><div class="metric-card"><div class="metric-label">Tracked net worth</div><div class="metric-value ${p.netWorth<0?'bad':'ok'}">${fmt(p.netWorth,S.cur)}</div></div></div>
   ${p.alerts.length?p.alerts.map(item=>`<p class="mute bad">⚠ ${esc(item)}</p>`).join(''):'<p class="mute ok">No immediate warning based on this month’s recorded income, spending and EMIs.</p>'}
-  <p class="mute">Estimates use only your saved ${S.country==='IN'?'India':'UAE'} records. Runway assumes current recorded monthly spending and EMI payments continue; it is not a bank balance or forecast guarantee.</p></div>`;
+  <p class="mute">Score considers savings surplus, cash runway, debt-service ratio and tracked net worth. Estimates use only your saved ${S.country==='IN'?'India':'UAE'} records. Runway assumes current recorded monthly spending and EMI payments continue; it is not a bank balance or forecast guarantee.</p></div>`;
 }
 function render(o={}){
   const a=$('#app'),t=totals(),nav=$('#nav');
